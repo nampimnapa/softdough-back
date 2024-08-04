@@ -382,33 +382,15 @@ router.post('/addsm', async (req, res) => {
 
 //edit กรณี insert กับิ edit มีปหใ roolback ก็งงๆ
 //ได้ละจ้า ชั้นโง่เอง
-router.patch('/editsm/:sm_id', upload.single('picture'),isAdmin, async (req, res) => {
+router.patch('/editsm/:sm_id', async (req, res) => {
     const sm_id = req.params.sm_id;
 
-    const { sm_name, smt_id, sm_price, fix, salesmenudetail } = req.body;
-
-    const imageBuffer = req.file && req.file.buffer ? req.file.buffer : null;
-
+    const { sm_name, smt_id, sm_price, fix, salesmenudetail, picture } = req.body;
 
     try {
-        let imageBase64 = null;
 
-        // ตรวจสอบว่ามีรูปภาพที่อัปโหลดเข้ามาหรือไม่
-        if (imageBuffer) {
-            // ปรับขนาดรูปภาพ
-            const resizedImageBuffer = await sharp(imageBuffer)
-                .resize({ width: 300, height: 300 })
-                .toBuffer();
-
-            // เปลี่ยนข้อมูลรูปภาพเป็น base64
-            imageBase64 = resizedImageBuffer.toString('base64');
-        }
-
-        const salesmenuWithPicture = { sm_name, smt_id, sm_price, fix };
+        const salesmenuWithPicture = { sm_name, smt_id, sm_price, fix,picture };
         console.log(salesmenuWithPicture)
-        if (imageBase64) {
-            salesmenuWithPicture.picture = imageBase64;
-        }
 
         connection.beginTransaction((err) => {
             if (err) {
@@ -423,7 +405,6 @@ router.patch('/editsm/:sm_id', upload.single('picture'),isAdmin, async (req, res
                         return res.status(500).json({ message: 'Error updating salesMenu', error: err });
                     });
                 }
-
 
                 if (!salesMenuResult || salesMenuResult.affectedRows === 0) {
                     console.error('salesMenu update result is invalid:', salesMenuResult);

@@ -388,7 +388,7 @@ router.patch('/editsm/:sm_id', async (req, res) => {
 
     try {
         const salesmenuWithPicture = { sm_name, smt_id, sm_price, fix, picture,status };
-        console.log(sm_id);
+        console.log(salesmenudetail);
 
         connection.beginTransaction(async (err) => {
             if (err) {
@@ -407,17 +407,20 @@ router.patch('/editsm/:sm_id', async (req, res) => {
                 }
 
                 if (salesmenudetail && salesmenudetail.length > 0) {
-                    const query = 'SELECT pd_id FROM salesMenudetail WHERE sm_id = ?';
-                    const [results] = await connection.promise().query(query, [sm_id]);
-
-                    const existingPdIds = results.map(result => result.pd_id);
-                    const newPdIds = salesmenudetail.map(detail => detail.pd_id);
-
-                    const updateData = salesmenudetail.filter(item => existingPdIds.includes(item.pd_id));
-                    const insertData = salesmenudetail.filter(item => !existingPdIds.includes(item.pd_id));
-                    const deleteData = existingPdIds.filter(id => !newPdIds.includes(id));
-
+console.log('Sending')
                     if (fix === "1") {
+                        console.log("fix1")
+
+                        const query = 'SELECT pd_id FROM salesMenudetail WHERE sm_id = ?';
+                        const [results] = await connection.promise().query(query, [sm_id]);
+    
+                        const existingPdIds = results.map(result => result.pd_id);
+                        const newPdIds = salesmenudetail.map(detail => detail.pd_id);
+    
+                        const updateData = salesmenudetail.filter(item => existingPdIds.includes(item.pd_id));
+                        const insertData = salesmenudetail.filter(item => !existingPdIds.includes(item.pd_id));
+                        const deleteData = existingPdIds.filter(id => !newPdIds.includes(id));
+
                         if (deleteData.length > 0) {
                             const deleteQuery = 'UPDATE salesMenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND sm_id = ?';
                             for (const pd_id of deleteData) {
@@ -438,25 +441,26 @@ router.patch('/editsm/:sm_id', async (req, res) => {
                             }
                         }
                     } else if (fix === "2") {
-                        if (deleteData.length > 0) {
-                            const deleteQuery = 'UPDATE salesMenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND sm_id = ?';
-                            for (const pd_id of deleteData) {
-                                await connection.promise().query(deleteQuery, [pd_id, sm_id]);
-                            }
-                        }
+                        console.log("fix2")
+                        // if (deleteData.length > 0) {
+                        //     const deleteQuery = 'UPDATE salesMenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND sm_id = ?';
+                        //     for (const pd_id of deleteData) {
+                        //         await connection.promise().query(deleteQuery, [pd_id, sm_id]);
+                        //     }
+                        // }
 
-                        if (insertData.length > 0) {
-                            const insertQuery = 'INSERT INTO salesMenudetail (sm_id, pd_id, qty, deleted_at) VALUES ?';
-                            const insertValues = insertData.map(detail => [sm_id, detail.pd_id, detail.qty, null]);
-                            await connection.promise().query(insertQuery, [insertValues]);
-                        }
+                        // if (insertData.length > 0) {
+                        //     const insertQuery = 'INSERT INTO salesMenudetail (sm_id, pd_id, qty, deleted_at) VALUES ?';
+                        //     const insertValues = insertData.map(detail => [sm_id, detail.pd_id, detail.qty, null]);
+                        //     await connection.promise().query(insertQuery, [insertValues]);
+                        // }
 
-                        if (updateData.length > 0) {
-                            const updateQuery = 'UPDATE salesMenudetail SET qty = ?, deleted_at = NULL WHERE pd_id = ? AND sm_id = ?';
-                            for (const detail of updateData) {
+                        // if (updateData.length > 0) {
+                            const updateQuery = 'UPDATE salesMenudetail SET qty = ?, deleted_at = NULL, pd_id = ? WHERE sm_id = ?';
+                            for (const detail of salesmenudetail) {
                                 await connection.promise().query(updateQuery, [detail.qty, detail.pd_id, sm_id]);
                             }
-                        }
+                        // }
                     } else {
                         throw new Error('Invalid fix value');
                     }

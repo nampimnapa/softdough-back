@@ -35,7 +35,7 @@ router.post('/addProductionOrder', (req, res, next) => {
 
         if (!err) {
             const pdo_id = results.insertId;
-            console.log(productionOrder.pdo_status,"productionOrder.pdo_status")
+            console.log(productionOrder.pdo_status, "productionOrder.pdo_status")
             const values = productionOrderdetail.map(detail => [
                 detail.qty,
                 productionOrder.pdo_status,
@@ -63,7 +63,7 @@ router.post('/addProductionOrder', (req, res, next) => {
     });
 
 });
-router.get('/readall',  (req, res, next) => {
+router.get('/readall', (req, res, next) => {
     // const indl_id = req.params.id;
     var query = `
     SELECT
@@ -507,9 +507,43 @@ router.patch('/updatestatus/:pdo_id', (req, res, next) => {
 
 
 
+// router.patch('/updatestatusdetail', (req, res, next) => {
+//     const pdod_ids = req.body.pdod_ids; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
+//     const pdo_id = req.body.pdo_id;
+
+//     if (!pdod_ids || pdod_ids.length === 0) {
+//         return res.status(400).json({ message: "No pdod_id provided" });
+//     }
+
+//     // Initialize a counter to track the number of completed queries
+//     let completedQueries = 0;
+//     let hasErrorOccurred = false;
+
+//     pdod_ids.forEach(pdod_id => {
+//         var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 3 WHERE pdod_id = ?";
+//         connection.query(updateProductionOrderDetailQuery, [pdod_id], (detailErr, detailResults) => {
+//             if (detailErr) {
+//                 console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
+//                 if (!hasErrorOccurred) {
+//                     hasErrorOccurred = true;
+//                     return res.status(500).json(detailErr); // Return the error if one occurs
+//                 }
+//             } else {
+//                 completedQueries++;
+//                 if (completedQueries === pdod_ids.length && !hasErrorOccurred) {
+//                     console.log(pdo_id, "pdo_id")
+//                     Status3(pdo_id)
+//                     return res.status(200).json({ message: "Update success" }); // All queries completed successfully
+//                 }
+//             }
+//         });
+//     });
+// });
+//35
 router.patch('/updatestatusdetail', (req, res, next) => {
     const pdod_ids = req.body.pdod_ids; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
-    const pdo_id = req.body.pdo_id;
+    const pdo_id = req.body.pdo_id; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
+    const pdo_status = req.body.pdo_status; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
 
     if (!pdod_ids || pdod_ids.length === 0) {
         return res.status(400).json({ message: "No pdod_id provided" });
@@ -531,8 +565,8 @@ router.patch('/updatestatusdetail', (req, res, next) => {
             } else {
                 completedQueries++;
                 if (completedQueries === pdod_ids.length && !hasErrorOccurred) {
-                    console.log(pdo_id,"pdo_id")
-                    Status3(pdo_id)
+                    Status35(pdo_id, pdo_status)
+                    console.log("pdo_id", pdo_id)
                     return res.status(200).json({ message: "Update success" }); // All queries completed successfully
                 }
             }
@@ -540,13 +574,12 @@ router.patch('/updatestatusdetail', (req, res, next) => {
     });
 });
 
-const Status3 = async (pdo_id) => {
+const Status35 = async (pdo_id, newStatus) => {
     console.log("Checking and updating status for pdo_id:", pdo_id);
     try {
         // Query to get the status of the production order and its details
         const query = `
-            SELECT
-
+            SELECT 
                 pdo.pdo_status as pdo_status,
                 pdod.status as pdode_status
             FROM 
@@ -562,16 +595,17 @@ const Status3 = async (pdo_id) => {
 
         // Extract statuses from the results
         const statuses = results.map(item => item.pdode_status);
-        console.log("statuses",statuses)
+        console.log("statuses", statuses);
+
         // Check if all statuses are 3
-        const allStatusesAreThree = statuses.every(status => status === '3' || status === 3);
-        console.log("allStatusesAreThree",allStatusesAreThree)
+        const allStatusesAreThree = statuses.every(status => status === 3 || status === '3');
+        console.log("allStatusesAreThree", allStatusesAreThree);
 
         if (allStatusesAreThree) {
             // Update the status in productionOrder if all details have status 3
-            const updateQuery = "UPDATE productionOrder SET pdo_status = 3 WHERE pdo_id = ?";
-            await connection.promise().query(updateQuery, [pdo_id]);
-            console.log(`Updated status to 3 for pdo_id: ${pdo_id}`);
+            const updateQuery = "UPDATE productionOrder SET pdo_status = ? WHERE pdo_id = ?";
+            await connection.promise().query(updateQuery, [newStatus, pdo_id]);
+            console.log(`Updated status to ${newStatus} for pdo_id: ${pdo_id}`);
         } else {
             // Log the current statuses if not all are 3
             console.log(`Statuses for pdo_id ${pdo_id}:`, statuses);
@@ -581,6 +615,49 @@ const Status3 = async (pdo_id) => {
         console.error('MySQL Error:', error);
     }
 };
+
+
+// const Status3 = async (pdo_id) => {
+//     console.log("Checking and updating status for pdo_id:", pdo_id);
+//     try {
+//         // Query to get the status of the production order and its details
+//         const query = `
+//             SELECT
+
+//                 pdo.pdo_status as pdo_status,
+//                 pdod.status as pdode_status
+//             FROM 
+//                 productionOrder as pdo
+//             LEFT JOIN 
+//                 productionOrderdetail AS pdod ON pdod.pdo_id = pdo.pdo_id
+//             WHERE  
+//                 pdo.pdo_id = ?
+//         `;
+
+//         // Fetch the results
+//         const [results] = await connection.promise().query(query, [pdo_id]);
+
+//         // Extract statuses from the results
+//         const statuses = results.map(item => item.pdode_status);
+//         console.log("statuses", statuses)
+//         // Check if all statuses are 3
+//         const allStatusesAreThree = statuses.every(status => status === '3' || status === 3);
+//         console.log("allStatusesAreThree", allStatusesAreThree)
+
+//         if (allStatusesAreThree) {
+//             // Update the status in productionOrder if all details have status 3
+//             const updateQuery = "UPDATE productionOrder SET pdo_status = 3 WHERE pdo_id = ?";
+//             await connection.promise().query(updateQuery, [pdo_id]);
+//             console.log(`Updated status to 3 for pdo_id: ${pdo_id}`);
+//         } else {
+//             // Log the current statuses if not all are 3
+//             console.log(`Statuses for pdo_id ${pdo_id}:`, statuses);
+//         }
+
+//     } catch (error) {
+//         console.error('MySQL Error:', error);
+//     }
+// };
 
 
 //เพิ่มวัตถุดิบที่ใช้ตามผลิต

@@ -3,6 +3,48 @@ const connection = require("../connection");
 const router = express.Router();
 const { isALL, ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder, } = require('../middleware')
 
+
+
+router.post('/unit', (req, res, next) => {
+    const units = req.body;
+
+    // Prepare the query with placeholders
+    const query = "INSERT INTO unit (un_name, type) VALUES (?, ?)";
+
+    // Combine all the insertion tasks into a single array of promises
+    const insertionPromises = [];
+
+    // Loop through each type in the units object
+    for (const type in units) {
+        if (units.hasOwnProperty(type)) {
+            const details = units[type].detail;
+
+            // Loop through each un_name in the details array
+            details.forEach(un_name => {
+                // Create a promise for each insertion and push it into the array
+                insertionPromises.push(new Promise((resolve, reject) => {
+                    connection.query(query, [un_name, type], (err, results) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(results);
+                        }
+                    });
+                }));
+            });
+        }
+    }
+
+    // Execute all insertions in parallel and wait for them to complete
+    Promise.all(insertionPromises)
+        .then(() => {
+            return res.status(200).json({ message: "success" });
+        })
+        .catch(err => {
+            console.error("MySQL Error:", err);
+            return res.status(500).json({ message: "error", error: err });
+        });
+});
 // ------------------------------------------วัตถุดิบ-----------------------------------------
 //เพิ่มวัตถุดิบ
 router.post('/add', (req, res, next) => {
@@ -2227,7 +2269,131 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
 
 })
 
+router.get('/readdetailLotpro/:pdo_id', (req, res, next) => {
+    const pdo_id = req.params.pdo_id;
+
+    const query = `
+    SELECT 
+        pdo.pdo_id, 
+        iup.*, 
+        iud.*, 
+        pdod.*, 
+        ind.*
+    FROM 
+        ingredient_Used_Pro as iup
+    JOIN 
+        ingredient_Used_detail as iud ON iup.indlde_id = iud.indlde_id
+    JOIN 
+        productionOrderdetail as pdod ON iup.pdod_id = pdod.pdod_id	
+    JOIN 
+        productionOrder as pdo ON pdo.pdo_id = pdod.pdo_id	
+    JOIN 
+        ingredient as ind ON ind.ind_id = iud.ind_id	
+    WHERE 
+        pdo.pdo_id = ?;
+    `;
+
+    connection.query(query, [pdo_id], (err, results) => {
+        if (err) {
+            console.error("MySQL Query Error:", err);
+            return res.status(500).json({ error: "Database query error" });
+        }
+
+        // Group results by pdo_id
+        const groupedResults = results.reduce((acc, item) => {
+            if (!acc[item.pdo_id]) {
+                acc[item.pdo_id] = {
+                    pdo_id: item.pdo_id,
+                    productionOrderdetails: [],
+                };
+            }
+
+            const existingPdod = acc[item.pdo_id].productionOrderdetails.find(pdod => pdod.pdod_id === item.pdod_id);
+
+            if (existingPdod) {
+                // Add ingredient_Used_Pro to existing productionOrderdetail
+                existingPdod.ingredient_Used_Pro.push({
+                    qty_used_sum: item.qty_used_sum,
+                    scrap: item.scrap,
+                    qtyusesum: item.qtyusesum,
+                    ind_id: item.ind_id,
+                    ind_name: item.ind_name,
+                    qty: item.qty
+                });
+            } else {
+                // Create a new productionOrderdetail entry
+                acc[item.pdo_id].productionOrderdetails.push({
+                    pdod_id: item.pdod_id,
+                    pdod_qty: item.pdod_qty,
+                    ingredient_Used_Pro: [{
+                        qty_used_sum: item.qty_used_sum,
+                        scrap: item.scrap,
+                        qtyusesum: item.qtyusesum,
+                        ind_id: item.ind_id,
+                        ind_name: item.ind_name,
+                        qty: item.qty
+                    }]
+                });
+            }
+
+            return acc;
+        }, {});
+
+        // Convert the groupedResults object to an array
+        const formattedResults = Object.values(groupedResults);
+
+        return res.status(200).json(formattedResults);
+    });
+});
 //all วัตถุดิบที่ใช้
+// router.get('/usedIngredients', (req, res, next) => {
+//     const query = `
+//     SELECT * FROM (
+//         SELECT 
+//             indU.indU_id AS id,
+//             indU.status,
+//             indU.note,
+//             indU.created_at,
+//             indU.updated_at,
+//             'ทั่วไป' AS name,
+//             'other' AS checkk
+//         FROM 
+//             ingredient_Used AS indU
+//         WHERE 
+//             indU.status != 0
+        
+//         UNION ALL
+        
+//         SELECT 
+//             CONCAT('PD', LPAD(induP.pdod_id, 7, '0')) AS id,
+//             induP.status,
+//             NULL AS note,
+//             MAX(induP.created_at) AS created_at,
+//             NULL AS updated_at,
+//             'ผลิตตามใบสั่งผลิต' AS name,
+//             'production' AS checkk
+//         FROM 
+//             ingredient_Used_Pro AS induP
+//         WHERE 
+//             induP.deleted_at IS NULL
+//         GROUP BY 
+//             induP.pdod_id
+//     ) AS combined_results
+//     ORDER BY 
+//         created_at DESC;
+    
+//     `;
+
+//     connection.query(query, (err, results) => {
+//         if (err) {
+//             console.error("MySQL Query Error:", err);
+//             return res.status(500).json({ message: "error", error: err });
+//         }
+
+//         return res.status(200).json(results);
+//     });
+// });
+
 router.get('/usedIngredients', (req, res, next) => {
     const query = `
     SELECT * FROM (
@@ -2247,7 +2413,7 @@ router.get('/usedIngredients', (req, res, next) => {
         UNION ALL
         
         SELECT 
-            CONCAT('PD', LPAD(induP.pdod_id, 7, '0')) AS id,
+            CONCAT('PD', LPAD(pdod.pdo_id, 7, '0')) AS id,
             induP.status,
             NULL AS note,
             MAX(induP.created_at) AS created_at,
@@ -2256,6 +2422,7 @@ router.get('/usedIngredients', (req, res, next) => {
             'production' AS checkk
         FROM 
             ingredient_Used_Pro AS induP
+            join productionOrderdetail as pdod on pdod.pdod_id = induP.pdod_id
         WHERE 
             induP.deleted_at IS NULL
         GROUP BY 

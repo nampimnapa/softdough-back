@@ -450,6 +450,35 @@ router.patch('/updatestatus/:pdo_id', (req, res, next) => {
     });
 });
 
+router.patch('/updatestatus3/:pdo_id', (req, res, next) => {
+    const pdo_id = req.params.pdo_id;
+
+
+    // Update pdo_status in productionOrder table
+    var updateProductionOrderQuery = "UPDATE productionOrder SET pdo_status = 3 WHERE pdo_id = ?";
+    connection.query(updateProductionOrderQuery, [pdo_id], (err, results) => {
+        if (err) {
+            console.error("Error updating pdo_status in productionOrder:", err);
+            return res.status(500).json(err);
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ message: "Production order not found" });
+        }
+
+        // Update pdod_status in productionOrderdetail table
+        var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 2 WHERE pdo_id = ?";
+        connection.query(updateProductionOrderDetailQuery, [pdo_id], (detailErr, detailResults) => {
+            if (detailErr) {
+                console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
+                return res.status(500).json(detailErr);
+            }
+
+            return res.status(200).json({ message: "Update success" });
+        });
+    });
+});
+
 //แก้ไขให้=3 เสร็จสิ้นแล้วสำหรับรายละเอียดบางอัน
 // router.patch('/updatestatusdetail/:pdo_id', (req, res, next) => {
 //     const pdod_id = req.params.pdo_id;

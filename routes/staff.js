@@ -197,7 +197,7 @@ router.patch('/update/:id', (req, res, next) => {
   const staff = req.body;
 
   // Check if st_status is 2
-  if (staff.st_status === "2") {
+  if (staff.st_status === "2"||staff.st_status ===2) {
 
     const updateData = req.body;
 

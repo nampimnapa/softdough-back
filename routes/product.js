@@ -1041,7 +1041,7 @@ router.get('/pdset/:pd_id', async (req, res, next) => {
                 // If the product contains picture data
                 if (formattedResult.picture) {
                     // Include the base64-encoded picture data in the response
-                    formattedResult.picture = `data:image/jpeg;base64,${formattedResult.picture}`;
+                    formattedResult.picture = formattedResult.picture;
                 }
 
                 return res.status(200).json(formattedResult);

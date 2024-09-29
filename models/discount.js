@@ -12,7 +12,8 @@ module.exports = (sequelize, DataTypes) => {
         dc_detail: DataTypes.STRING,
         dc_diccountprice: DataTypes.FLOAT,
         datestart: DataTypes.DATE,
-        dateend: DataTypes.DATE
+        dateend: DataTypes.DATE,
+        minimum: DataTypes.FLOAT
 
     }, {
         sequelize,

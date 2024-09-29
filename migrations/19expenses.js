@@ -33,6 +33,9 @@ module.exports = {
                     key: 'st_id'
                 }
             },
+            ep_date:{
+                type: Sequelize.DATE
+              },
             created_at: {
                 allowNull: false,
                 type: Sequelize.DATE,

@@ -23,6 +23,9 @@ module.exports = {
             dateend: {
                 type: Sequelize.DATE
             },
+            minimum:{
+                type: Sequelize.FLOAT
+            },
             created_at: {
                 allowNull: false,
                 type: Sequelize.DATE,

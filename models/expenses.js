@@ -13,6 +13,7 @@ module.exports = (sequelize, DataTypes) => {
         ep_status: DataTypes.STRING(1),
         ept_id: DataTypes.INTEGER,
         user_id: DataTypes.INTEGER,
+        ep_date: DataTypes.DATE
 
     }, {
         sequelize,

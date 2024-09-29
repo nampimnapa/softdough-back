@@ -121,7 +121,7 @@ const isUserOrder = (req, res, next) => {
 };
 
 const isAdminUserOrder = (req, res, next) => {
-    if (req.session && (req.session.st_type === '0' || req.session.st_type === '1')) {
+    if (req.session && (req.session.st_type === '0' || req.session.st_type === '2')) {
         next(); // Allow to proceed to the next middleware or route handler
     } else {
         res.status(403).send('Access Forbidden'); // Send 403 Forbidden status if not an admin or order user

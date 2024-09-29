@@ -4,6 +4,19 @@ const router = express.Router();
 const { isALL, ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder, } = require('../middleware')
 
 
+//แจ้งเตือน
+const http = require('http');
+const socketIo = require('socket.io');
+const server = http.createServer(express);
+const io = socketIo(server, {
+    cors: {
+        origin: 'http://localhost:3000',
+        methods: ['GET', 'POST'],
+        allowedHeaders: ['Content-Type'],
+        credentials: true
+    }
+});
+
 
 router.post('/unit', (req, res, next) => {
     const units = req.body;
@@ -1837,8 +1850,11 @@ router.post('/addUseIngrediantnew', (req, res, next) => {
                 })
 
             });
+
             if (!err) {
                 res.status(200).json({ message: "success" });
+                const { checkMinimumIngredient } = require('../routes/notification');
+            checkMinimumIngredient(io);
             }
 
 
@@ -3358,4 +3374,8 @@ router.get('/ingredientlot/search', (req, res) => {
 
 
 
-module.exports = router;
+// module.exports = router;
+module.exports = {
+    router,
+    Updateqtystock
+}

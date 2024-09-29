@@ -6,10 +6,11 @@ const multer = require('multer');
 const upload = multer();
 const sharp = require('sharp');
 
-const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder ,isAdminUserOrder} = require('../middleware')
+const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder } = require('../middleware')
 
 
-router.get('/unit',(req, res, next) => {
+
+router.get('/unit', (req, res, next) => {
     var query = 'select *from unit where type="2"'
     connection.query(query, (err, results) => {
         if (!err) {
@@ -48,7 +49,7 @@ router.patch('/updatesmt/:smt_id', (req, res, next) => {
     const smt_id = req.params.smt_id;
     const sm = req.body;
     var query = "UPDATE salesmenuType SET smt_name=?,un_id=?,qty_per_unit=? WHERE smt_id=?";
-    connection.query(query, [sm.smt_name,sm.un_id,sm.qty_per_unit, smt_id], (err, results) => {
+    connection.query(query, [sm.smt_name, sm.un_id, sm.qty_per_unit, smt_id], (err, results) => {
         if (!err) {
             if (results.affectedRows === 0) {
                 console.error(err);
@@ -86,14 +87,14 @@ router.patch('/updatesmt/:smt_id', (req, res, next) => {
 // })
 
 //read sm ข้อมูลโชว์หมดไม่ได้จัด
-router.get('/sm/:sm_id',(req, res, next) => {
+router.get('/sm/:sm_id', (req, res, next) => {
     const sm_id = Number(req.params.sm_id);
 
     var query = `SELECT sm.*, smt.*, smd.* 
     FROM salesMenuType smt 
     JOIN salesMenu sm ON sm.smt_id = smt.smt_id 
     JOIN salesMenudetail smd ON sm.sm_id = smd.sm_id 
-    WHERE sm.sm_id = ?`
+    WHERE sm.sm_id = ? and smd.deleted_at IS NULL`
     connection.query(query, sm_id, (err, results) => {
         if (!err) {
             return res.status(200).json(results);
@@ -262,14 +263,14 @@ router.get('/small', async (req, res, next) => {
 //rollback ตรง detail มีปัญหา กับ json ได้ tsx ไม่ได้ มีสำรองด้านใน บรรทัดเปลี่ยน detail
 // ลูกน้ำตัดเอา Middleware ออกนะ เพราะเรายังไม่มีการ Login
 router.post('/addsm', async (req, res) => {
-    const { name, type, price, status, selltype,image  } = req.body;
+    const { name, type, price, status, selltype, image } = req.body;
     const salesmenudetail = req.body.product;
 
 
     try {
 
-        const salesmenuWithPicture = { sm_name:name, smt_id:type, sm_price:price,status, fix:selltype, picture:image };
-        console.log(salesmenuWithPicture,selltype)
+        const salesmenuWithPicture = { sm_name: name, smt_id: type, sm_price: price, status, fix: selltype, picture: image };
+        console.log(salesmenuWithPicture, selltype)
         connection.beginTransaction((err) => {
             if (err) {
                 return res.status(500).json({ message: 'Transaction start error', error: err });
@@ -291,13 +292,13 @@ router.post('/addsm', async (req, res) => {
                 //     });
                 //     return res.status(500).json({ message: 'An error occurred' });
                 // }
-                const salesmenuId = salesmenuResult.insertId;
+                let salesmenuId = salesmenuResult.insertId;
                 //สำรองถ้า tsx ส่งมาละไม่ได้ ติด สตริงสัมติง
                 //ก่อนติดสตริงจะไม่มี
-                const salesmenudetailar = salesmenudetail;  
+                const salesmenudetailar = salesmenudetail;
 
-                if (salesmenudetailar && Array.isArray(salesmenudetailar)) {
-                    if (selltype === "1"||1) {
+                if (salesmenudetailar && Array.isArray(salesmenudetailar) && salesmenuId) {
+                    if (selltype === "1" || selltype === 1) {
                         const salesmenudetail1 = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, detail.qty, null]);
                         const salesmenudetailQuery = `INSERT INTO salesMenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
                         connection.query(salesmenudetailQuery, [salesmenudetail1], (err, detailResults) => {
@@ -314,9 +315,10 @@ router.post('/addsm', async (req, res) => {
                                 return res.status(500).json({ message: 'An error occurred detail' });
                             }
 
+
                         });
-                    } else if (selltype === "2"||2) {
-                        // console.log(salesmenudetailar)
+                    } else if (selltype === "2" || selltype === 2) {
+                        console.log("Type 2", salesmenudetailar)
                         const salesmenudetailWithNullQty = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, null, null]); // กำหนดค่า qty เป็น null ในแต่ละรายการ
                         const salesmenudetailQuery = `INSERT INTO salesMenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
                         connection.query(salesmenudetailQuery, [salesmenudetailWithNullQty], (err, detailResults) => {
@@ -326,7 +328,7 @@ router.post('/addsm', async (req, res) => {
                                 });
                             }
                             if (!detailResults || !detailResults.insertId) {
-                                console.error('salesMenu insertion result is invalid:', salesmenuResult);
+                                console.error('salesMenu insertion result is invalid:', salesmenudetailWithNullQty);
                                 connection.rollback(() => {
                                     res.status(500).json({ message: 'Invalid salesmenu insertion result 2' });
                                 });
@@ -371,7 +373,7 @@ router.post('/addsm', async (req, res) => {
                     });
                 }
 
-            
+
             });
         });
     } catch (error) {
@@ -384,10 +386,10 @@ router.post('/addsm', async (req, res) => {
 //ได้ละจ้า ชั้นโง่เอง
 router.patch('/editsm/:sm_id', async (req, res) => {
     const sm_id = req.params.sm_id;
-    const { sm_name, smt_id, sm_price,status, fix, salesmenudetail, picture } = req.body;
+    const { sm_name, smt_id, sm_price, status, fix, salesmenudetail, picture } = req.body;
 
     try {
-        const salesmenuWithPicture = { sm_name, smt_id, sm_price, fix, picture,status };
+        const salesmenuWithPicture = { sm_name, smt_id, sm_price, fix, picture, status };
         console.log(salesmenudetail);
 
         connection.beginTransaction(async (err) => {
@@ -407,16 +409,16 @@ router.patch('/editsm/:sm_id', async (req, res) => {
                 }
 
                 if (salesmenudetail && salesmenudetail.length > 0) {
-console.log('Sending')
+                    console.log('Sending')
                     if (fix === "1") {
                         console.log("fix1")
 
                         const query = 'SELECT pd_id FROM salesMenudetail WHERE sm_id = ?';
                         const [results] = await connection.promise().query(query, [sm_id]);
-    
+
                         const existingPdIds = results.map(result => result.pd_id);
                         const newPdIds = salesmenudetail.map(detail => detail.pd_id);
-    
+
                         const updateData = salesmenudetail.filter(item => existingPdIds.includes(item.pd_id));
                         const insertData = salesmenudetail.filter(item => !existingPdIds.includes(item.pd_id));
                         const deleteData = existingPdIds.filter(id => !newPdIds.includes(id));
@@ -451,16 +453,50 @@ console.log('Sending')
 
                         // if (insertData.length > 0) {
                         //     const insertQuery = 'INSERT INTO salesMenudetail (sm_id, pd_id, qty, deleted_at) VALUES ?';
-                        //     const insertValues = insertData.map(detail => [sm_id, detail.pd_id, detail.qty, null]);
+                        //     const insertValues = insertData.map(detail => [sm_id, detail.pd_id, null, null]);
                         //     await connection.promise().query(insertQuery, [insertValues]);
                         // }
 
                         // if (updateData.length > 0) {
-                            const updateQuery = 'UPDATE salesMenudetail SET qty = ?, deleted_at = NULL, pd_id = ? WHERE sm_id = ?';
-                            for (const detail of salesmenudetail) {
-                                await connection.promise().query(updateQuery, [detail.qty, detail.pd_id, sm_id]);
-                            }
+                        //     const updateQuery = 'UPDATE salesMenudetail SET qty = ?, deleted_at = NULL, pd_id = ? WHERE sm_id = ?';
+                        //     for (const detail of salesmenudetail) {
+                        //         await connection.promise().query(updateQuery, [null, detail.pd_id, sm_id]);
+                        //     }
                         // }
+
+                        const query = 'SELECT pd_id FROM salesMenudetail WHERE sm_id = ?';
+                        const [results] = await connection.promise().query(query, [sm_id]);
+
+                        const existingPdIds = results.map(result => result.pd_id);
+                        const newPdIds = salesmenudetail.map(detail => detail.pd_id);
+
+                        // Determine which data to update, insert, or delete
+                        const updateData = salesmenudetail.filter(item => existingPdIds.includes(item.pd_id));
+                        const insertData = salesmenudetail.filter(item => !existingPdIds.includes(item.pd_id));
+                        const deleteData = existingPdIds.filter(id => !newPdIds.includes(id));
+
+                        // Delete data
+                        if (deleteData.length > 0) {
+                            const deleteQuery = 'UPDATE salesMenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND sm_id = ?';
+                            for (const pd_id of deleteData) {
+                                await connection.promise().query(deleteQuery, [pd_id, sm_id]);
+                            }
+                        }
+
+                        // Insert new data
+                        if (insertData.length > 0) {
+                            const insertQuery = 'INSERT INTO salesMenudetail (sm_id, pd_id, qty, deleted_at) VALUES ?';
+                            const insertValues = insertData.map(detail => [sm_id, detail.pd_id, null, null]);
+                            await connection.promise().query(insertQuery, [insertValues]);
+                        }
+
+                        // Update existing data
+                        if (updateData.length > 0) {
+                            const updateQuery = 'UPDATE salesMenudetail SET qty = ?, deleted_at = NULL WHERE sm_id = ? AND pd_id = ?';
+                            for (const detail of salesmenudetail) {
+                                await connection.promise().query(updateQuery, [detail.qty, sm_id, detail.pd_id]);
+                            }
+                        }
                     } else {
                         throw new Error('Invalid fix value');
                     }
@@ -578,6 +614,34 @@ console.log('Sending')
 
 
 
+//ตาม type ในหนเา promo
+router.get('/readsmfromt', (req, res, next) => {
+    let smt_ids = req.query.smt_id;
 
+    // Ensure smt_ids is an array
+    if (!Array.isArray(smt_ids)) {
+        smt_ids = [smt_ids];
+    }
+
+    // Ensure smt_ids is not empty
+    if (smt_ids.length > 0) {
+        const query = `
+            SELECT *
+            FROM salesMenuType smt 
+            JOIN salesMenu sm ON sm.smt_id = smt.smt_id 
+            WHERE sm.smt_id IN (?)
+        `;
+
+        connection.query(query, [smt_ids], (err, results) => {
+            if (!err) {
+                return res.status(200).json(results);
+            } else {
+                return res.status(500).json(err);
+            }
+        });
+    } else {
+        return res.status(400).json({ message: 'Invalid or missing smt_id array' });
+    }
+});
 
 module.exports = router;

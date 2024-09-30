@@ -2,6 +2,9 @@ const express = require("express");
 const connection = require("../connection");
 const router = express.Router();
 const puppeteer = require('puppeteer'); // นำเข้า Puppeteer
+const fs = require('fs');
+const path = require('path');
+
 
 // เปลี่ยนราคา
 router.get('/small/:delitype?', async (req, res, next) => {
@@ -131,40 +134,52 @@ router.get('/sm/:sm_id', (req, res, next) => {
 
 
 
-
-
-
 // puppeteer ยังบ่แล้ว เทส
-router.get('/generate-pdf', async (req, res, next) => {
+router.post('/generate-pdf', async (req, res, next) => {
+    // const { orderData } = req.body; // รับข้อมูลจาก body ของคำขอ
+
     try {
-        const browser = await puppeteer.launch({
-            headless: true, // ให้ Puppeteer ทำงานในโหมด headless
-        });
-
+        const browser = await puppeteer.launch({ headless: true });
         const page = await browser.newPage();
+        const orderData = req.body;
 
-        // ไปที่ URL ของหน้าเว็บที่คุณต้องการแปลงเป็น PDF
-        await page.goto('http://localhost:3000', {
-            waitUntil: 'networkidle0', // รอให้โหลดทุกอย่างเสร็จสิ้น
-        });
-
-        // สร้างไฟล์ PDF ขนาด A4 และพิมพ์พื้นหลัง
+        // สร้างเนื้อหา HTML ตาม orderData
+        const pdfContent = `
+        <html>
+            <head>
+                <title>Order Summary</title>
+            </head>
+            <body>
+                <h1>Order Summary</h1>
+                <p>Date: ${orderData.od_date}</p>
+                <p>Total: ${orderData.od_sumdetail}</p>
+                <p>Payment Type: ${orderData.od_paytype}</p>
+                <p>Change: ${orderData.od_change}</p>
+            </body>
+        </html>
+    `;
+        await page.setContent(pdfContent);
         const pdf = await page.pdf({
+            path: 'document.pdf',
+
             format: 'A4',
             printBackground: true,
+            margin: { top: '20px', bottom: '20px', left: '10px', right: '10px' } // ลองเพิ่มขอบ
         });
-
         await browser.close();
 
-        // ตั้งค่า header ของ response เพื่อส่งไฟล์ PDF กลับไปให้ client
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename="document.pdf"');
+        res.setHeader('Content-Disposition', 'inline; filename="document.pdf"');
+
         res.send(pdf);
+        console.log("ตรวจสอบ", pdf); // ตรวจสอบข้อมูล PDF ที่สร้างขึ้น
+
     } catch (error) {
         console.error('Error generating PDF:', error);
         return res.status(500).json({ message: 'Error generating PDF', error });
     }
 });
+
 
 // Save order
 router.post('/order', async (req, res, next) => {
@@ -215,5 +230,54 @@ router.post('/order', async (req, res, next) => {
 
     // const { sh_id, odt_id, dc_id, user_id, od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_net, od_paytype, od_pay, od_change, od_status, note } = req.body;
 })
+
+router.get('/order', (req, res, next) => {
+    const od_id = Number(req.params.od_id);
+
+    var query = `
+        SELECT o.*, s.st_name, ot.odt_name FROM \`order\` o 
+        LEFT JOIN staff s ON o.user_id = s.st_id 
+        LEFT JOIN orderstype ot ON o.odt_id = ot.odt_id`;
+
+    connection.query(query, [od_id], (err, results) => {
+        if (!err) {
+            return res.status(200).json(results);
+        } else {
+            console.error("MySQL Error:", err);
+            return res.status(500).json({ message: "error", error: err });
+        }
+    });
+});
+
+router.get('/order/:od_id', (req, res, next) => {
+    const od_id = Number(req.params.od_id);
+
+    var query = `SELECT * FROM \`order\`  WHERE od_id= ?;`;
+
+    connection.query(query, [od_id], (err, results) => {
+        if (!err) {
+            return res.status(200).json(results);
+        } else {
+            console.error("MySQL Error:", err);
+            return res.status(500).json({ message: "error", error: err });
+        }
+    });
+});
+
+router.get('/order/latest', (req, res, next) => {
+    const query = `SELECT * FROM \`order\` ORDER BY od_id DESC LIMIT 1;`; // ดึงคำสั่งซื้อที่ล่าสุด
+
+    connection.query(query, (err, results) => {
+        if (!err) {
+            return res.status(200).json(results[0]); // ส่งกลับเฉพาะคำสั่งซื้อล่าสุด
+        } else {
+            console.error("MySQL Error:", err);
+            return res.status(500).json({ message: "error", error: err });
+        }
+    });
+});
+
+
+
 
 module.exports = router;

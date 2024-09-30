@@ -43,18 +43,34 @@ router.post('/login', ifLoggedIn, [
                         req.session.st_type = rows.st_type; // Set userRole in session
 
                         // Redirect based on user role
+                        // if (req.session.st_type === '0') {
+                        //     res.status(200).json({ message: "Successful admin login" });
+                        //     console.log(req.session)
+                        // } else if (req.session.st_type === '1') {
+                        //     res.status(200).json({ message: "Successful production login" });
+                        //     console.log(req.session)
+
+                        // } else if (req.session.st_type === '2') {
+                        //     res.status(200).json({ message: "Successful order login" });
+                        //     console.log(req.session)
+
+                        // } else {
+                        //     // Send "Successful login" message for API JSON testing
+                        //     res.json({ message: "Successful login" });
+                        // }
                         if (req.session.st_type === '0') {
-                            res.status(200).json({ message: "Successful admin login" });
+                            res.status(200).json({ message: "Successful admin login", st_id: req.session.st_id });
                             console.log(req.session)
                         } else if (req.session.st_type === '1') {
-                            res.status(200).json({ message: "Successful production login" });
-
+                            res.status(200).json({ message: "Successful production login", st_id: req.session.st_id });
+                            console.log(req.session)
                         } else if (req.session.st_type === '2') {
-                            res.status(200).json({ message: "Successful order login" });
+                            res.status(200).json({ message: "Successful order login", st_id: req.session.st_id });
+                            console.log(req.session)
                         } else {
-                            // Send "Successful login" message for API JSON testing
-                            res.json({ message: "Successful login" });
+                            res.json({ message: "Successful login", st_id: req.session.st_id }); // เพิ่ม st_id ที่นี่
                         }
+                        
                     } else {
                         res.status(500).json({
                             login_errors: ['Invalid password']
@@ -75,7 +91,7 @@ router.post('/login', ifLoggedIn, [
         })
     }
 });
-
+ 
 
 router.get('/logout', (req, res) => {
     req.session = null;

@@ -197,7 +197,7 @@ app.use('/notification', notificationRouter.router);
 app.use('/pos',posRoute)
 
 app.get("/", (req, res) => {
-    res.json({ message: "hello world!" });
+    res.json({ message: "Hello!!, welcome. This is the API hub for the SOFTDOUGH, PC-KKU project." });
 });
 
 server.listen(PORT, () => {

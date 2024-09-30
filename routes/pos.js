@@ -48,9 +48,9 @@ router.get('/sm', async (req, res, next) => {
     try {
         query = `
         SELECT sm.*, smt.*, smd.*, p.pd_name
-        FROM salesMenuType smt 
-        JOIN salesMenu sm ON sm.smt_id = smt.smt_id 
-        JOIN salesMenudetail smd ON sm.sm_id = smd.sm_id 
+        FROM salesmenutype smt 
+        JOIN salesmenu sm ON sm.smt_id = smt.smt_id 
+        JOIN salesmenudetail smd ON sm.sm_id = smd.sm_id 
         LEFT JOIN products p ON smd.pd_id = p.pd_id 
         WHERE smd.deleted_at IS NULL`;
 

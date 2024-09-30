@@ -1,0 +1,7 @@
+version: '3'
+services:
+  api:
+    container_name: api-softdough
+    build: .
+    ports:
+      - "5555:8080"

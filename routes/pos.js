@@ -198,7 +198,11 @@ router.post('/order', async (req, res, next) => {
         sh_id,
         odt_id,
         dc_id,
-        user_id } = req.body;
+        user_id,
+        selectedItems } = req.body;
+
+        // console.log(selectedItems)
+
     const values = [
         od_date,
         od_qtytotal,
@@ -221,7 +225,28 @@ router.post('/order', async (req, res, next) => {
 
     connection.query(query, values, (err, results) => {
         if (!err) {
-            return res.status(200).json({ message: "success" });
+            const detailQuery = `
+            INSERT INTO orderdetail (
+                od_id, sm_id, odde_qty, odde_sum) VALUES ?;
+        `;
+            const detailValues = selectedItems.map(detail => [
+                results.insertId,
+                detail.sm_id,
+                detail.quantity,
+                detail.quantity * detail.sm_price,
+            ]);
+
+            // console.log(detailValues)
+
+            connection.query(detailQuery, [detailValues], (err, resultsAll) => {
+                if (!err) {
+                    return res.status(200).json({ message: "success" });
+                }else {
+                    console.error("MySQL Error detail:", err);
+                    return res.status(500).json({ message: "error detail", error: err });
+                }
+            });
+
         } else {
             console.error("MySQL Error:", err);
             return res.status(500).json({ message: "error", error: err });

@@ -25,7 +25,7 @@ router.post('/addcat', (req, res, next) => {
 })
 
 router.get('/readcat', (req, res, next) => {
-    var query = 'select *from productCategory'
+    var query = 'select *from productcategory'
     connection.query(query, (err, results) => {
         if (!err) {
             return res.status(200).json(results);

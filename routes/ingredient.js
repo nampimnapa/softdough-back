@@ -653,7 +653,7 @@ router.get('/readlot', (req, res, next) => {
         CONCAT('L', LPAD(indl_id, 7, '0')) AS indl_id_name,
         DATE_FORMAT(created_at, '%Y-%m-%d') AS created_at,
         DATE_FORMAT(updated_at, '%Y-%m-%d') AS updated_at
-    FROM Ingredient_lot 
+    FROM ingredient_lot 
     ORDER BY created_at DESC
 `;
 
@@ -2577,7 +2577,7 @@ router.get('/usedIngredients', (req, res, next) => {
             'ทั่วไป' AS name,
             'other' AS checkk
         FROM 
-            ingredient_Used AS indU
+            ingredient_used AS indU
         WHERE 
             indU.status != 0
         
@@ -2585,15 +2585,15 @@ router.get('/usedIngredients', (req, res, next) => {
         
         SELECT 
             CONCAT('PD', LPAD(pdod.pdo_id, 7, '0')) AS id,
-            induP.status,
+            MAX(induP.status) AS status,
             NULL AS note,
             MAX(induP.created_at) AS created_at,
             NULL AS updated_at,
             'ผลิตตามใบสั่งผลิต' AS name,
             'production' AS checkk
         FROM 
-            ingredient_Used_Pro AS induP
-            join productionOrderdetail as pdod on pdod.pdod_id = induP.pdod_id
+            ingredient_used_pro AS induP
+            JOIN productionorderdetail AS pdod ON pdod.pdod_id = induP.pdod_id
         WHERE 
             induP.deleted_at IS NULL
         GROUP BY 
@@ -2601,7 +2601,6 @@ router.get('/usedIngredients', (req, res, next) => {
     ) AS combined_results
     ORDER BY 
         created_at DESC;
-    
     `;
 
     connection.query(query, (err, results) => {

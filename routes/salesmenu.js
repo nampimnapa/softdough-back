@@ -35,7 +35,7 @@ router.post('/addtype', (req, res, next) => {
 })
 
 router.get('/readsmt', (req, res, next) => {
-    var query = 'select *from salesmenuType'
+    var query = 'select *from salesmenutype'
     connection.query(query, (err, results) => {
         if (!err) {
             return res.status(200).json(results);
@@ -91,9 +91,9 @@ router.get('/sm/:sm_id', (req, res, next) => {
     const sm_id = Number(req.params.sm_id);
 
     var query = `SELECT sm.*, smt.*, smd.* 
-    FROM salesMenuType smt 
-    JOIN salesMenu sm ON sm.smt_id = smt.smt_id 
-    JOIN salesMenudetail smd ON sm.sm_id = smd.sm_id 
+    FROM salesmenutype smt 
+    JOIN salesmenu sm ON sm.smt_id = smt.smt_id 
+    JOIN salesmenudetail smd ON sm.sm_id = smd.sm_id 
     WHERE sm.sm_id = ? and smd.deleted_at IS NULL`
     connection.query(query, sm_id, (err, results) => {
         if (!err) {
@@ -107,7 +107,7 @@ router.get('/sm/:sm_id', (req, res, next) => {
 router.get('/smt/:id', (req, res, next) => {
     const smt_id = Number(req.params.id);
 
-    var query = `select *from salesmenuType where smt_id=?`
+    var query = `select *from salesmenutype where smt_id=?`
     connection.query(query, smt_id, (err, results) => {
         if (!err) {
             return res.status(200).json(results);
@@ -171,9 +171,9 @@ router.get('/smset/:sm_id', async (req, res, next) => {
     const sm_id = Number(req.params.sm_id);
     try {
         var query = `SELECT sm.*, smt.*, smd.* 
-    FROM salesMenuType smt 
-    JOIN salesMenu sm ON sm.smt_id = smt.smt_id 
-    JOIN salesMenudetail smd ON sm.sm_id = smd.sm_id 
+    FROM salesmenutype smt 
+    JOIN salesmenu sm ON sm.smt_id = smt.smt_id 
+    JOIN salesmenudetail smd ON sm.sm_id = smd.sm_id 
     WHERE sm.sm_id = ?`;
 
         connection.query(query, sm_id, (err, results) => {
@@ -227,9 +227,7 @@ router.get('/smset/:sm_id', async (req, res, next) => {
 //resd sm all
 router.get('/small', async (req, res, next) => {
     try {
-        var query = `SELECT sm.* , smt.smt_name
-            FROM salesMenuType smt 
-            JOIN salesMenu sm ON sm.smt_id = smt.smt_id`;
+        var query = `SELECT sm.* , smt.smt_name FROM salesmenutype smt JOIN salesmenu sm ON sm.smt_id = smt.smt_id`;
 
         connection.query(query, (err, results) => {
             if (err) {

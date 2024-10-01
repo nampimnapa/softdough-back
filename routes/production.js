@@ -67,12 +67,12 @@ router.get('/readall', (req, res, next) => {
     // const indl_id = req.params.id;
     var query = `
     SELECT
-        productionOrder.*,
+        productionorder.*,
         CONCAT('PD', LPAD(pdo_id, 7, '0')) AS pdo_id_name,
         DATE_FORMAT(updated_at, '%Y-%m-%d') AS 	updated_at,
         pdo_status
     FROM 
-        productionOrder 
+        productionorder 
     WHERE 
         pdo_status != 0
     ORDER BY updated_at DESC   

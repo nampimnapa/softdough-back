@@ -13,7 +13,7 @@ router.get('/small/:delitype?', async (req, res, next) => {
         return res.status(200).json({});
     try {
         var query = `SELECT sm.sm_id,sm.sm_name,sm.smt_id,sm.status,sm.fix,sm.picture,typede.odtd_price AS sm_price
-            FROM salesMenu sm 
+            FROM salesmenu sm 
             JOIN orderstypedetail typede ON typede.sm_id = sm.sm_id
             WHERE typede.odt_id=${delitype};`;
 
@@ -87,9 +87,9 @@ router.get('/smmix', (req, res, next) => {
 
     var query = `
     SELECT sm.*, smt.*, smd.*, p.pd_name
-FROM salesMenuType smt 
-JOIN salesMenu sm ON sm.smt_id = smt.smt_id 
-JOIN salesMenudetail smd ON sm.sm_id = smd.sm_id 
+FROM salesmenutype smt 
+JOIN salesmenu sm ON sm.smt_id = smt.smt_id 
+JOIN salesmenudetail smd ON sm.sm_id = smd.sm_id 
 LEFT JOIN products p ON smd.pd_id = p.pd_id  
 WHERE sm.fix = '2'  
   AND smd.deleted_at IS NULL;
@@ -114,9 +114,9 @@ router.get('/sm/:sm_id', (req, res, next) => {
                WHEN sm.fix = '2' THEN p.pd_name 
                ELSE NULL 
            END AS pd_name 
-    FROM salesMenuType smt 
-    JOIN salesMenu sm ON sm.smt_id = smt.smt_id 
-    JOIN salesMenudetail smd ON sm.sm_id = smd.sm_id 
+    FROM salesmenutype smt 
+    JOIN salesmenu sm ON sm.smt_id = smt.smt_id 
+    JOIN salesmenudetail smd ON sm.sm_id = smd.sm_id 
     LEFT JOIN products p ON smd.pd_id = p.pd_id  
     WHERE sm.sm_id = ? 
       AND smd.deleted_at IS NULL`;

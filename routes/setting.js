@@ -110,8 +110,8 @@ router.get('/price', (req, res, next) => {
         sm.sm_price, 
         smt.smt_name
     FROM 
-        salesMenu sm
-        JOIN salesMenuType smt ON sm.smt_id = smt.smt_id
+        salesmenu sm
+        JOIN salesmenutype smt ON sm.smt_id = smt.smt_id
     `;
 
     const detailQuery = `
@@ -121,8 +121,8 @@ router.get('/price', (req, res, next) => {
         ot.odt_name, 
         otd.odtd_price
     FROM 
-        ordersTypeDetail otd
-        JOIN ordersType ot ON otd.odt_id = ot.odt_id
+        orderstypedetail otd
+        JOIN orderstype ot ON otd.odt_id = ot.odt_id
     `;
 
     connection.query(query, (err, menuResults) => {
@@ -167,7 +167,7 @@ router.get('/price', (req, res, next) => {
 
 
 router.get('/ordertype', (req, res, next) => {
-    var q = 'select * from ordersType where deleted_at is null'
+    var q = 'select * from orderstype where deleted_at is null'
     connection.query(q, (err, results) => {
         if (!err) {
             return res.status(200).json(results);
@@ -208,7 +208,7 @@ router.post('/addordertype', (req, res, next) => {
 
     // เพิ่มข้อมูลใน ordersType
     const insertOrderTypeQuery = `
-        INSERT INTO ordersType (odt_id, odt_name, odt_per, deleted_at)
+        INSERT INTO orderstype (odt_id, odt_name, odt_per, deleted_at)
         VALUES (?, ?, ?, ?);
     `;
     const orderTypeValues = [
@@ -227,7 +227,7 @@ router.post('/addordertype', (req, res, next) => {
         // ถ้าเพิ่มข้อมูลใน ordersType สำเร็จ
         // วนลูปเพื่อเพิ่มข้อมูลใน ordersTypeDetail
         let detailInsertQuery = `
-            INSERT INTO ordersTypeDetail (sm_id, odt_id, odtd_price, deleted_at)
+            INSERT INTO orderstypedetail (sm_id, odt_id, odtd_price, deleted_at)
             VALUES (?, ?, ?, null);
         `;
 
@@ -261,7 +261,7 @@ router.patch('/updateprices', (req, res) => {
     }
 
     const updateQueries = prices.map(priceObj => {
-        const query = 'UPDATE salesMenu SET sm_price = ?, updated_at = current_timestamp() WHERE sm_id = ?';
+        const query = 'UPDATE salesmenu SET sm_price = ?, updated_at = current_timestamp() WHERE sm_id = ?';
         const values = [priceObj.price, priceObj.sm_id];
         console.log(query, values); // พิมพ์ query และค่าออกมาดู
         return {
@@ -295,7 +295,7 @@ router.patch('/updatepricesdeli', (req, res) => {
     console.log(prices,"prices")
     
     const updateOrInsertQueries = prices.map(priceObj => {
-        const checkExistQuery = 'SELECT COUNT(*) AS count FROM ordersTypeDetail WHERE sm_id = ? AND odt_id = ?';
+        const checkExistQuery = 'SELECT COUNT(*) AS count FROM orderstypedetail WHERE sm_id = ? AND odt_id = ?';
         const checkValues = [priceObj.sm_id, priceObj.odt_id];
 
         return new Promise((resolve, reject) => {
@@ -306,7 +306,7 @@ router.patch('/updatepricesdeli', (req, res) => {
                 const exists = results[0].count > 0;
                 if (exists) {
                     // ถ้ามีอยู่แล้ว อัปเดตราคา
-                    const updateQuery = 'UPDATE ordersTypeDetail SET odtd_price = ?, updated_at = current_timestamp() WHERE sm_id = ? AND odt_id = ?';
+                    const updateQuery = 'UPDATE orderstypedetail SET odtd_price = ?, updated_at = current_timestamp() WHERE sm_id = ? AND odt_id = ?';
                     const updateValues = [priceObj.price, priceObj.sm_id, priceObj.odt_id];
                     connection.query(updateQuery, updateValues, (err, results) => {
                         if (err) return reject(err);
@@ -314,7 +314,7 @@ router.patch('/updatepricesdeli', (req, res) => {
                     });
                 } else {
                     // ถ้าไม่มี เพิ่มข้อมูลใหม่
-                    const insertQuery = 'INSERT INTO ordersTypeDetail (sm_id, odt_id, odtd_price, deleted_at) VALUES (?, ?, ?, null)';
+                    const insertQuery = 'INSERT INTO orderstypedetail (sm_id, odt_id, odtd_price, deleted_at) VALUES (?, ?, ?, null)';
                     const insertValues = [priceObj.sm_id, priceObj.odt_id, priceObj.price];
                     connection.query(insertQuery, insertValues, (err, results) => {
                         if (err) return reject(err);
@@ -345,7 +345,7 @@ router.patch('/updatepriceswithincrement', (req, res) => {
     const updatePromises = detail.map(item => {
         return new Promise((resolve, reject) => {
             // First, check if the record exists
-            const checkQuery = 'SELECT * FROM ordersTypeDetail WHERE sm_id = ? AND odt_id = ?';
+            const checkQuery = 'SELECT * FROM orderstypedetail WHERE sm_id = ? AND odt_id = ?';
             const checkValues = [item.sm_id, item.odt_id];
 
             connection.query(checkQuery, checkValues, (err, results) => {
@@ -354,7 +354,7 @@ router.patch('/updatepriceswithincrement', (req, res) => {
                 if (results.length > 0) {
                     // If the record exists, update it
                     const newPrice = item.price + priceup;
-                    const updateQuery = 'UPDATE ordersTypeDetail SET odtd_price = ?, updated_at = current_timestamp() WHERE sm_id = ? AND odt_id = ?';
+                    const updateQuery = 'UPDATE orderstypedetail SET odtd_price = ?, updated_at = current_timestamp() WHERE sm_id = ? AND odt_id = ?';
                     const updateValues = [newPrice, item.sm_id, item.odt_id];
 
                     connection.query(updateQuery, updateValues, (err, results) => {
@@ -365,7 +365,7 @@ router.patch('/updatepriceswithincrement', (req, res) => {
                     // If the record does not exist, insert a new one
                     // อาจไม่ต้องมี
                     const newPrice = item.price + priceup;
-                    const insertQuery = 'INSERT INTO ordersTypeDetail (sm_id, odt_id, odtd_price, deleted_at) VALUES (?, ?, ?, null)';
+                    const insertQuery = 'INSERT INTO orderstypedetail (sm_id, odt_id, odtd_price, deleted_at) VALUES (?, ?, ?, null)';
                     const insertValues = [item.sm_id, item.odt_id, newPrice];
 
                     connection.query(insertQuery, insertValues, (err, results) => {
@@ -394,7 +394,7 @@ router.patch('/updatepricesallup', (req, res) => {
     }
 
     const updateQueries = detail.map(priceObj => {
-        const query = 'UPDATE salesMenu SET sm_price = ?, updated_at = current_timestamp() WHERE sm_id = ?';
+        const query = 'UPDATE salesmenu SET sm_price = ?, updated_at = current_timestamp() WHERE sm_id = ?';
         const newPrice = Number(priceObj.price) + priceup;
 
         const values = [newPrice, priceObj.sm_id];

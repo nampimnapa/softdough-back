@@ -213,13 +213,13 @@ router.get('/readfree', (req, res, next) => {
     JOIN 
         promotiondetail pd ON p.pm_id = pd.pm_id
     JOIN 
-        salesMenu smbuy ON pd.smbuy_id = smbuy.sm_id
+        salesmenu smbuy ON pd.smbuy_id = smbuy.sm_id
     JOIN 
-        salesMenu smfree ON pd.smfree_id = smfree.sm_id
+        salesmenu smfree ON pd.smfree_id = smfree.sm_id
     JOIN 
-        salesMenuType smbuytype ON smbuy.smt_id = smbuytype.smt_id
+        salesmenutype smbuytype ON smbuy.smt_id = smbuytype.smt_id
     JOIN 
-        salesMenuType smfreetype ON smfree.smt_id = smfreetype.smt_id;
+        salesmenutype smfreetype ON smfree.smt_id = smfreetype.smt_id;
 
     `;
 
@@ -280,13 +280,13 @@ router.get('/readfreedetail/:pm_id', async (req, res, next) => {
     JOIN 
         promotiondetail pd ON p.pm_id = pd.pm_id
     JOIN 
-        salesMenu smbuy ON pd.smbuy_id = smbuy.sm_id
+        salesmenu smbuy ON pd.smbuy_id = smbuy.sm_id
     JOIN 
-        salesMenu smfree ON pd.smfree_id = smfree.sm_id
+        salesmenu smfree ON pd.smfree_id = smfree.sm_id
     JOIN 
-        salesMenuType smbuytype ON smbuy.smt_id = smbuytype.smt_id
+        salesmenutype smbuytype ON smbuy.smt_id = smbuytype.smt_id
     JOIN 
-        salesMenuType smfreetype ON smfree.smt_id = smfreetype.smt_id
+        salesmenutype smfreetype ON smfree.smt_id = smfreetype.smt_id
     WHERE 
         p.pm_id = ?;  -- Use parameterized query for security
     `;

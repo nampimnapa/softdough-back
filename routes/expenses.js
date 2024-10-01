@@ -6,7 +6,7 @@ const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdm
 
 router.post('/addtype', (req, res, next) => {
     let type = req.body;
-    query = "insert into expensesType (ept_name) values(?)";
+    query = "insert into expensestype (ept_name) values(?)";
     connection.query(query, [type.ept_name], (err, results) => {
         if (!err) {
             return res.status(200).json({ message: "success" });
@@ -18,7 +18,7 @@ router.post('/addtype', (req, res, next) => {
 })
 
 router.get('/readtype', (req, res, next) => {
-    var query = 'select *from expensesType'
+    var query = 'select * from expensestype'
     connection.query(query, (err, results) => {
         if (!err) {
             return res.status(200).json(results);
@@ -31,7 +31,7 @@ router.get('/readtype', (req, res, next) => {
 router.patch('/updatetype/:ept_id', (req, res, next) => {
     const ept_id = req.params.ept_id;
     const type = req.body;
-    var query = "UPDATE expensesType SET ept_name=? WHERE ept_id=?";
+    var query = "UPDATE expensestype SET ept_name=? WHERE ept_id=?";
     connection.query(query, [type.ept_name, ept_id], (err, results) => {
         if (!err) {
             if (results.affectedRows === 0) {
@@ -148,7 +148,7 @@ router.get('/readall', (req, res, next) => {
     FROM 
         expenses AS ep
     JOIN 
-        expensesType AS ept ON ept.ept_id = ep.ept_id 
+        expensestype AS ept ON ept.ept_id = ep.ept_id 
     JOIN 
         staff AS st ON st.st_id = ep.user_id
     WHERE 
@@ -178,7 +178,7 @@ router.get('/readstatus', (req, res, next) => {
    FROM 
        expenses AS ep
    JOIN 
-       expensesType AS ept ON ept.ept_id = ep.ept_id 
+       expensestype AS ept ON ept.ept_id = ep.ept_id 
    JOIN 
        staff AS st ON st.st_id = ep.user_id
    WHERE 
@@ -274,7 +274,7 @@ router.get('/readalldash', (req, res, next) => {
     FROM 
         expenses AS ep
     JOIN 
-        expensesType AS ept ON ept.ept_id = ep.ept_id 
+        expensestype AS ept ON ept.ept_id = ep.ept_id 
     WHERE 
         ep.deleted_at IS NULL 
         AND ep.ep_status = 2 

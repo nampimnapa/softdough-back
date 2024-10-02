@@ -289,9 +289,10 @@ router.get('/order/:od_id', (req, res, next) => {
     });
 });
 
-router.get('/order/latest', (req, res, next) => {
+router.get('/latest', (req, res, next) => {
     const query = `SELECT * FROM \`order\` ORDER BY od_id DESC LIMIT 1;`; // ดึงคำสั่งซื้อที่ล่าสุด
-
+    // console.log("SELECT * FROM \`order\` ORDER BY od_id DESC LIMIT 1;")
+    // return res.status(200).json({mes:"Test"}); // ส่งกลับเฉพาะคำสั่งซื้อล่าสุด
     connection.query(query, (err, results) => {
         if (!err) {
             return res.status(200).json(results[0]); // ส่งกลับเฉพาะคำสั่งซื้อล่าสุด

@@ -10,7 +10,7 @@ const socketIo = require('socket.io');
 const server = http.createServer(express);
 const io = socketIo(server, {
     cors: {
-        origin: 'http://localhost:3000',
+        origin: 'https://softdough.co',
         methods: ['GET', 'POST'],
         allowedHeaders: ['Content-Type'],
         credentials: true

@@ -139,7 +139,12 @@ router.post('/generate-pdf', async (req, res, next) => {
     // const { orderData } = req.body; // รับข้อมูลจาก body ของคำขอ
 
     try {
-        const browser = await puppeteer.launch({ headless: true });
+        // const browser = await puppeteer.launch({ headless: true });
+        const browser = await puppeteer.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null
+        });
         const page = await browser.newPage();
         const orderData = req.body;
 
@@ -159,12 +164,18 @@ router.post('/generate-pdf', async (req, res, next) => {
         </html>
     `;
         await page.setContent(pdfContent);
-        const pdf = await page.pdf({
-            path: 'document.pdf',
+        // const pdf = await page.pdf({
+        //     path: 'document.pdf',
 
+        //     format: 'A4',
+        //     printBackground: true,
+        //     margin: { top: '20px', bottom: '20px', left: '10px', right: '10px' } // ลองเพิ่มขอบ
+        // });
+
+        const pdf = await page.pdf({
             format: 'A4',
             printBackground: true,
-            margin: { top: '20px', bottom: '20px', left: '10px', right: '10px' } // ลองเพิ่มขอบ
+            margin: { top: '20px', bottom: '20px', left: '10px', right: '10px' }
         });
         await browser.close();
 
@@ -175,8 +186,12 @@ router.post('/generate-pdf', async (req, res, next) => {
         console.log("ตรวจสอบ", pdf); // ตรวจสอบข้อมูล PDF ที่สร้างขึ้น
 
     } catch (error) {
-        console.error('Error generating PDF:', error);
-        return res.status(500).json({ message: 'Error generating PDF', error });
+        console.error('Detailed error:', error);
+        return res.status(500).json({ 
+            message: 'Error generating PDF', 
+            error: error.message,
+            stack: error.stack 
+        });
     }
 });
 

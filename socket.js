@@ -1,7 +1,7 @@
 const socketIo = require('socket.io');
 
 const setupSocket = (server) => {
-    const io = socketIo(server, { cors: { origin: 'https://api.softdough.co', credentials: true } });
+    const io = socketIo(server, { cors: { origin: 'https://softdough.co', credentials: true } });
 
     io.on('connection', (socket) => {
         console.log('User connected:', socket.id);

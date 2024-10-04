@@ -141,7 +141,7 @@ const PORT = 8080;
 
 // CORS settings
 const corsOptions = {
-    origin: 'https://api.softdough.co',
+    origin: 'https://softdough.co',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type']
@@ -197,7 +197,7 @@ app.use('/notification', notificationRouter.router);
 app.use('/pos',posRoute)
 
 app.get("/", (req, res) => {
-    res.json({ message: "Hello!!, welcome. This is the API hub for the SOFTDOUGH, PC-KKU project." });
+    res.json({ message: "Hello!!, welcome This is the API hub for the SOFTDOUGH, CP-KKU project." });
 });
 
 server.listen(PORT, () => {

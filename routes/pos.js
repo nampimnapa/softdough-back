@@ -63,7 +63,6 @@ router.get('/sm', async (req, res, next) => {
             if (results.length === 0) {
                 return res.status(404).json({ message: 'sm not found' });
             }
-
             // Loop through the results to modify each result as needed
             results.forEach(result => {
                 // If the product contains picture data

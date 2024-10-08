@@ -187,10 +187,10 @@ router.post('/generate-pdf', async (req, res, next) => {
 
     } catch (error) {
         console.error('Detailed error:', error);
-        return res.status(500).json({ 
-            message: 'Error generating PDF', 
+        return res.status(500).json({
+            message: 'Error generating PDF',
             error: error.message,
-            stack: error.stack 
+            stack: error.stack
         });
     }
 });
@@ -215,9 +215,6 @@ router.post('/order', async (req, res, next) => {
         dc_id,
         user_id,
         selectedItems } = req.body;
-
-        // console.log(selectedItems)
-
     const values = [
         od_date,
         od_qtytotal,
@@ -232,10 +229,8 @@ router.post('/order', async (req, res, next) => {
         sh_id,
         odt_id,
         dc_id,
-        // user_id,
         userId // Assuming you also want to store user ID
     ];
-    // const query = `INSERT INTO order(od_date,od_qtytotal,od_sumdetail,od_discounttotal,od_paytype,od_net,od_pay,od_change,od_status,note,sh_id,odt_id,dc_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?);`;
     const query = `INSERT INTO \`order\`(od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype, od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
 
     connection.query(query, values, (err, results) => {
@@ -250,13 +245,10 @@ router.post('/order', async (req, res, next) => {
                 detail.quantity,
                 detail.quantity * detail.sm_price,
             ]);
-
-            // console.log(detailValues)
-
             connection.query(detailQuery, [detailValues], (err, resultsAll) => {
                 if (!err) {
                     return res.status(200).json({ message: "success" });
-                }else {
+                } else {
                     console.error("MySQL Error detail:", err);
                     return res.status(500).json({ message: "error detail", error: err });
                 }
@@ -268,7 +260,6 @@ router.post('/order', async (req, res, next) => {
         }
     });
 
-    // const { sh_id, odt_id, dc_id, user_id, od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_net, od_paytype, od_pay, od_change, od_status, note } = req.body;
 })
 
 router.get('/order', (req, res, next) => {

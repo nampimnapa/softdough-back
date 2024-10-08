@@ -1,12 +1,19 @@
 const mysql = require("mysql2");
+require('dotenv').config();
+
+const host = process.env.DATABASE_HOST;
+const port = process.env.DATABASE_PORT;
+const user = process.env.DATABASE_USER;
+const password = process.env.DATABASE_PASSWORD;
+const database = process.env.DATABASE_NAME;
 
 const db = mysql.createConnection(
     {
-        host: '147.50.230.32',
-        port:'3306',
-        user:'root',
-        password:'softdough@db',
-        database:'softdough_sep'
+        host: host,
+        port: port,
+        user: user,
+        password:password,
+        database: database
         // database:'softdough'
     }
 );

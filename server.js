@@ -135,13 +135,15 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require("cors");
 const cookieSession = require('cookie-session');
+require('dotenv').config();
 
 const app = express();
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
+const frontUrl = process.env.FRONT;
 
 // CORS settings
 const corsOptions = {
-    origin: 'https://softdough.co',
+    origin: frontUrl,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type']

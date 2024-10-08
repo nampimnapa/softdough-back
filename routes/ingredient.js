@@ -2,7 +2,7 @@ const express = require("express");
 const connection = require("../connection");
 const router = express.Router();
 const { isALL, ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder, } = require('../middleware')
-
+const frontUrl = process.env.FRONT;
 
 //แจ้งเตือน
 const http = require('http');
@@ -10,7 +10,7 @@ const socketIo = require('socket.io');
 const server = http.createServer(express);
 const io = socketIo(server, {
     cors: {
-        origin: 'https://softdough.co',
+        origin: frontUrl,
         methods: ['GET', 'POST'],
         allowedHeaders: ['Content-Type'],
         credentials: true

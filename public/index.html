@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOFTDOUGH API Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+        }
+
+        .architecture-diagram {
+            width: 500px;
+            height: 500px;
+            position: relative;
+            margin: 0 auto;
+        }
+
+        .component {
+            width: 80px;
+            height: 80px;
+            position: absolute;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .component:hover {
+            transform: scale(1.1);
+        }
+
+        .component img {
+            max-width: 60%;
+            max-height: 60%;
+        }
+
+        .center-logo {
+            width: 100px;
+            height: 100px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .center-logo img {
+            max-width: 70%;
+            max-height: 70%;
+        }
+
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center mb-8">Welcome to <span class="text-blue-600">SOFTDOUGH API Hub</span>
+        </h1>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4">About the Project</h2>
+            <p>SOFTDOUGH is a senior project developed by 4th-year Information Technology students at the College of
+                Computing, Khon Kaen University. We're dedicated to creating a comprehensive donut shop management
+                system that leverages cutting-edge technology.</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-2xl font-semibold mb-6">Development Team</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 max-w-sm shadow-sm">
+                        <div class="flex items-center mb-4">
+                            <img src="https://avatars.githubusercontent.com/u/126116881?v=4" alt="Phimnapa" class="w-12 h-12 rounded-full mr-4">
+                            <div>
+                                <h3 class="font-bold text-gray-900">Pimnapa Sriboonreuang</h3>
+                                <p class="text-gray-600"><a href="https://github.com/nampimnapa" target="_blank">@nampimnapa</a></p>
+                            </div>
+                        </div>
+                        <p class="mb-4 text-gray-700">Frontend developer and UI/UX enthusiast. I’m currently learning College of Computing Khon Kaen University</p>
+                        <p class="text-gray-500 text-sm">
+                            <span class="mr-4">4th-year Information Technology</span>
+                            <span>CP, KKU.</span>
+                        </p>
+                    </div>
+
+
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 max-w-sm shadow-sm">
+                        <div class="flex items-center mb-4">
+                            <img src="https://avatars.githubusercontent.com/u/143681012?v=4" alt="Kanuengnit" class="w-12 h-12 rounded-full mr-4">
+                            <div>
+                                <h3 class="font-bold text-gray-900">Kanuengnid Sanyothaka</h3>
+                                <p class="text-gray-600"><a href="https://github.com/eyefuu" target="_blank">@eyefuu</a></p>
+                            </div>
+                        </div>
+                        <p class="mb-4 text-gray-700">Backend developer passionate about scalable systems and UI/UX enthusiast.</p>
+                        <p class="text-gray-500 text-sm">
+                            <span class="mr-4">4th-year Information Technology</span>
+                            <span>CP, KKU.</span>
+                        </p>
+                    </div>
+
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 max-w-sm shadow-sm">
+                        <div class="flex items-center mb-4">
+                            <img src="https://api.computing.kku.ac.th//storage/images/1661876184-monlicawattana1_1.png" alt="Professor Mallika"
+                                class="w-12 h-12 rounded-full mr-4">
+                            <div>
+                                <h3 class="font-bold text-gray-900">Asst. Prof. Monlica Wattana, Ph.D.</h3>
+                                <p class="text-gray-600"><a href="https://computing.kku.ac.th/monlica.wattana" target="_blank">@monlica</a></p>
+                            </div>
+                        </div>
+                        <p class="mb-4 text-gray-700">Project Advisor | Professor at the College of Computing, Khon Kaen University</p>
+                        <p class="text-gray-500 text-sm">
+                            <span class="mr-4">College of Computing</span>
+                            <span>Khon Kaen University</span>
+                        </p>
+                    </div>
+                </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4">Project Capabilities</h2>
+            <p class="mb-6">SOFTDOUGH is an all-in-one solution for donut shops, featuring:</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <svg class="feature-icon text-blue-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
+                        </path>
+                    </svg>
+                    <h3 class="text-lg font-semibold mb-2">Inventory Management</h3>
+                    <p class="text-sm">Efficiently manage your donut shop's inventory with real-time tracking and
+                        automated restocking alerts.</p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <svg class="feature-icon text-green-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+                        </path>
+                    </svg>
+                    <h3 class="text-lg font-semibold mb-2">Production Orders</h3>
+                    <p class="text-sm">Streamline your donut production process with automated order management and
+                        scheduling.</p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <svg class="feature-icon text-yellow-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                    <h3 class="text-lg font-semibold mb-2">Cost Calculation</h3>
+                    <p class="text-sm">Accurately calculate production costs, including ingredients and labor, to
+                        optimize pricing and profitability.</p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <svg class="feature-icon text-red-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                        </path>
+                    </svg>
+                    <h3 class="text-lg font-semibold mb-2">Income/Expense Tracking</h3>
+                    <p class="text-sm">Keep a detailed record of all financial transactions, providing insights into
+                        your business's financial health.</p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <svg class="feature-icon text-purple-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                    <h3 class="text-lg font-semibold mb-2">POS System</h3>
+                    <p class="text-sm">A user-friendly Point of Sale system tailored for donut shops, enabling quick and
+                        efficient customer transactions.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4">System Architecture</h2>
+            <div class="architecture-diagram">
+                <div class="center-logo">
+                    <img src="./softdough-logo.png" alt="softdough-logo">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const components = [
+            { name: 'Next.js', icon: './next-logo.png' },
+            { name: 'Express.js', icon: './ex.png' },
+            { name: 'MySQL', icon: 'https://www.mysql.com/common/logos/logo-mysql-170x115.png' },
+            { name: 'Docker', icon: './docker-mark-blue.png' },
+            { name: 'Jenkins', icon: 'https://www.jenkins.io/images/logos/jenkins/jenkins.png' },
+            { name: 'Ubuntu', icon: 'https://assets.ubuntu.com/v1/29985a98-ubuntu-logo32.png' },
+            { name: 'Nginx', icon: './nginx-svgrepo-com.png' },
+            { name: 'GitHub', icon: './github-logo.png' }
+        ];
+
+        const diagram = document.querySelector('.architecture-diagram');
+        const centerX = 250;
+        const centerY = 250;
+        const radius = 180;
+
+        components.forEach((component, index) => {
+            const angle = (index / components.length) * 2 * Math.PI;
+            const x = centerX + radius * Math.cos(angle) - 40;
+            const y = centerY + radius * Math.sin(angle) - 40;
+
+            const div = document.createElement('div');
+            div.className = 'component';
+            div.style.left = `${x}px`;
+            div.style.top = `${y}px`;
+
+            const img = document.createElement('img');
+            img.src = component.icon;
+            img.alt = component.name;
+
+            div.appendChild(img);
+            diagram.appendChild(div);
+        });
+
+        // Add subtle animation
+        let angle = 0;
+        function animate() {
+            angle += 0.002;
+            components.forEach((_, index) => {
+                const componentAngle = angle + (index / components.length) * 2 * Math.PI;
+                const x = centerX + radius * Math.cos(componentAngle) - 40;
+                const y = centerY + radius * Math.sin(componentAngle) - 40;
+
+                const div = diagram.children[index + 1]; // +1 to skip the center logo
+                div.style.left = `${x}px`;
+                div.style.top = `${y}px`;
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+</body>
+
+</html>

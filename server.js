@@ -136,6 +136,7 @@ const socketIo = require('socket.io');
 const cors = require("cors");
 const cookieSession = require('cookie-session');
 require('dotenv').config();
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -161,7 +162,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 const server = http.createServer(app);
-
+app.use(express.static(path.join(__dirname, 'public')));
 
 const setupSocket = require('./socket'); // เรียกใช้ไฟล์ socket.js
 // setupSocket(server); // ตั้งค่า Socket.IO
@@ -199,7 +200,8 @@ app.use('/notification', notificationRouter.router);
 app.use('/pos',posRoute)
 
 app.get("/", (req, res) => {
-    res.json({ message: "Hello!!, welcome This is the API hub for the SOFTDOUGH, CP-KKU project." });
+    // res.json({ message: "Hello!!, welcome This is the API hub for the SOFTDOUGH, CP-KKU project." });
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 server.listen(PORT, () => {

@@ -6,3 +6,11 @@ services:
     build: .
     ports:
       - "5555:8080"
+    environment:
+      - PORT=8080
+      - DATABASE_HOST=147.50.230.32
+      - DATABASE_PORT=3306
+      - DATABASE_USER=root
+      - DATABASE_PASSWORD=softdough@db
+      - DATABASE_NAME=softdough_sep
+      - FRONT=https://softdough.co

@@ -137,6 +137,7 @@ const cors = require("cors");
 const cookieSession = require('cookie-session');
 require('dotenv').config();
 const path = require('path');
+const favicon = require('serve-favicon');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -163,6 +164,7 @@ app.use(express.urlencoded({ extended: false }));
 
 const server = http.createServer(app);
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 
 const setupSocket = require('./socket'); // เรียกใช้ไฟล์ socket.js
 // setupSocket(server); // ตั้งค่า Socket.IO

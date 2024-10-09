@@ -164,6 +164,7 @@ app.use(express.urlencoded({ extended: false }));
 
 const server = http.createServer(app);
 app.use(express.static(path.join(__dirname, 'public')));
+
 app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 
 const setupSocket = require('./socket'); // เรียกใช้ไฟล์ socket.js
@@ -201,10 +202,14 @@ app.use('/setting', settingRoute);
 app.use('/notification', notificationRouter.router);
 app.use('/pos',posRoute)
 
+
+
 app.get("/", (req, res) => {
     // res.json({ message: "Hello!!, welcome This is the API hub for the SOFTDOUGH, CP-KKU project." });
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+
 
 server.listen(PORT, () => {
     console.log(`Server started on port ${PORT}`);});

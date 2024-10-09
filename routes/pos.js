@@ -232,7 +232,6 @@ router.post('/order', async (req, res, next) => {
         userId // Assuming you also want to store user ID
     ];
     const query = `INSERT INTO \`order\`(od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype, od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
-
     connection.query(query, values, (err, results) => {
         if (!err) {
             const detailQuery = `

@@ -1874,7 +1874,7 @@ router.post('/addUseIngrediantnew', async (req, res, next) => {
 
     try {
         // แทรกข้อมูลลงในตาราง ingredient_Used
-        const query = "INSERT INTO ingredient_Used (status, note) VALUES (?, ?)";
+        const query = "INSERT INTO ingredient_used (status, note) VALUES (?, ?)";
         const [results] = await connection.promise().query(query, [ingredient_Used.status, ingredient_Used.note]);
         const indU_id = results.insertId;
 

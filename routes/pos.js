@@ -197,69 +197,221 @@ router.post('/generate-pdf', async (req, res, next) => {
 
 
 // Save order
+// router.post('/order', async (req, res, next) => {
+//     const userId = req.session.st_id; // ดึง user_id จาก session
+//     console.log(req.session)
+//     const { od_date,
+//         od_qtytotal,
+//         od_sumdetail,
+//         od_discounttotal,
+//         od_paytype,
+//         od_net,
+//         od_pay,
+//         od_change,
+//         od_status,
+//         note,
+//         sh_id,
+//         odt_id,
+//         dc_id,
+//         user_id,
+//         selectedItems } = req.body;
+//     const values = [
+//         od_date,
+//         od_qtytotal,
+//         od_sumdetail,
+//         od_discounttotal,
+//         od_paytype,
+//         od_net,
+//         od_pay,
+//         od_change,
+//         od_status,
+//         note,
+//         sh_id,
+//         odt_id,
+//         dc_id,
+//         userId // Assuming you also want to store user ID
+//     ];
+//     const query = `INSERT INTO \`order\`(od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype, od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
+//     connection.query(query, values, (err, results) => {
+//         if (!err) {
+//             const detailQuery = `
+//             INSERT INTO orderdetail (
+//                 od_id, sm_id, odde_qty, odde_sum) VALUES ?;
+//         `;
+//             const detailValues = selectedItems.map(detail => [
+//                 results.insertId,
+//                 detail.sm_id,
+//                 detail.quantity,
+//                 detail.quantity * detail.sm_price,
+//             ]);    
+//             connection.query(detailQuery, [detailValues], (err, resultsAll) => {
+//                 if (!err) {
+//                     return res.status(200).json({ message: "success" });
+//                 } else {
+//                     console.error("MySQL Error detail:", err);
+//                     return res.status(500).json({ message: "error detail", error: err });
+//                 }
+//             });
+
+//         } else {
+//             console.error("MySQL Error:", err);
+//             return res.status(500).json({ message: "error", error: err });
+//         }
+//     });
+
+// })
+
+
+
+
+// เทสหักสต้อก
 router.post('/order', async (req, res, next) => {
     const userId = req.session.st_id; // ดึง user_id จาก session
-    console.log(req.session)
-    const { od_date,
-        od_qtytotal,
-        od_sumdetail,
-        od_discounttotal,
-        od_paytype,
-        od_net,
-        od_pay,
-        od_change,
-        od_status,
-        note,
-        sh_id,
-        odt_id,
-        dc_id,
-        user_id,
-        selectedItems } = req.body;
+    const {
+        od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype,
+        od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id,
+        selectedItems, freeItems
+    } = req.body;
+
     const values = [
-        od_date,
-        od_qtytotal,
-        od_sumdetail,
-        od_discounttotal,
-        od_paytype,
-        od_net,
-        od_pay,
-        od_change,
-        od_status,
-        note,
-        sh_id,
-        odt_id,
-        dc_id,
-        userId // Assuming you also want to store user ID
+        od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype,
+        od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, userId
     ];
-    const query = `INSERT INTO \`order\`(od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype, od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
-    connection.query(query, values, (err, results) => {
+
+    // แทรกข้อมูลลงในตาราง order
+    const query = `
+        INSERT INTO \`order\`(od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype, 
+        od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, user_id) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    `;
+
+    connection.query(query, values, async (err, results) => {
         if (!err) {
+            const orderId = results.insertId; // ดึง od_id ที่ถูกแทรก
+
+            // เตรียมการแทรกข้อมูลใน orderdetail
             const detailQuery = `
-            INSERT INTO orderdetail (
-                od_id, sm_id, odde_qty, odde_sum) VALUES ?;
-        `;
-            const detailValues = selectedItems.map(detail => [
-                results.insertId,
-                detail.sm_id,
-                detail.quantity,
-                detail.quantity * detail.sm_price,
-            ]);
-            connection.query(detailQuery, [detailValues], (err, resultsAll) => {
-                if (!err) {
-                    return res.status(200).json({ message: "success" });
-                } else {
-                    console.error("MySQL Error detail:", err);
-                    return res.status(500).json({ message: "error detail", error: err });
-                }
+                INSERT INTO orderdetail (od_id, sm_id, odde_qty, odde_sum) VALUES ?;
+            `;
+
+            const allItems = [...selectedItems, ...freeItems];
+            const detailValues = allItems.map(detail => {
+                const odde_sum = detail.price * detail.quantity;
+                return [
+                    orderId,
+                    detail.sm_id,
+                    detail.quantity,
+                    isNaN(odde_sum) ? 0 : odde_sum // ตรวจสอบ NaN และแทนที่ด้วย 0
+                ];
             });
 
+            try {
+                const resultsAll = await queryPromise(detailQuery, [detailValues]);
+                let odde_id = resultsAll.insertId; // ดึง odde_id เริ่มต้นของ orderdetail ที่เพิ่งถูกสร้าง
+
+                const processItems = async (items, isFreeItem = false) => {
+                    for (const detail of items) {
+                        const sm_id = detail.sm_id;
+
+                        // หา smde_id และ pd_id จากตาราง salesmenudetail
+                        const salesMenuQuery = `SELECT smde_id, pd_id, qty AS sm_qty FROM salesmenudetail WHERE sm_id = ?`;
+                        const salesMenuDetail = await queryPromise(salesMenuQuery, [sm_id]);
+
+                        if (salesMenuDetail.length > 0) {
+                            const { smde_id, pd_id, sm_qty } = salesMenuDetail[0];
+
+                            // หา pdod_id และ qty จาก productionorderdetail ที่มี status = 3 หรือ 4 และเรียงลำดับ qty ASC
+                            const productionOrderQuery = `
+                                SELECT pdod_id, qty FROM productionorderdetail 
+                                WHERE pd_id = ? AND status IN (3, 4) 
+                                ORDER BY qty ASC
+                            `;
+                            const productionOrderDetails = await queryPromise(productionOrderQuery, [pd_id]);
+
+                            let remainingQtyToDeduct = detail.quantity * sm_qty; // นำค่า qty ของ salesmenudetail มาคูณกับจำนวนที่จะหัก
+
+                            for (const productionOrderDetail of productionOrderDetails) {
+                                const { pdod_id, qty } = productionOrderDetail;
+                                if (remainingQtyToDeduct <= 0) break; // ถ้าหักครบแล้ว ให้ออกจาก loop
+
+                                // หาค่าจำนวนที่จะหักในแต่ละรายการ (ต้องไม่เกินจำนวนที่เหลือ)
+                                const deductQty = Math.min(remainingQtyToDeduct, qty);
+                                const newQty = qty - deductQty; // ปรับจำนวนสินค้าคงเหลือ
+
+                                // อัพเดท qty ใหม่ใน productionorderdetail
+                                const updateProductionOrderQuery = `
+                                    UPDATE productionorderdetail SET qty = ? WHERE pdod_id = ?;
+                                `;
+                                await queryPromise(updateProductionOrderQuery, [newQty, pdod_id]);
+
+                                // แทรกข้อมูลลงใน OrderdetailSalesMenu
+                                const insertSalesMenuQuery = `
+                                    INSERT INTO orderdetailsalesmenu (odde_id, smde_id, pdod_id) 
+                                    VALUES (?, ?, ?);
+                                `;
+                                await queryPromise(insertSalesMenuQuery, [odde_id, smde_id, pdod_id]);
+
+                                // แทรก pdod_id และ odde_id เข้าไปใน promotionorderdetail
+                                const insertPromotionOrderDetailQuery = `
+                                    INSERT INTO promotionorderdetail (pdod_id, odde_id) 
+                                    VALUES (?, ?);
+                                `;
+                                await queryPromise(insertPromotionOrderDetailQuery, [pdod_id, odde_id]);
+
+                                // ปรับจำนวนที่เหลือที่ต้องหัก
+                                remainingQtyToDeduct -= deductQty;
+                            }
+
+                            if (remainingQtyToDeduct > 0) {
+                                throw new Error(`Insufficient quantity to fulfill the order for pd_id: ${pd_id}`);
+                            }
+                        }
+                        odde_id++; // เพิ่ม odde_id สำหรับรายการถัดไป
+                    }
+                };
+
+                // ประมวลผลสินค้าปกติ
+                await processItems(selectedItems);
+                // ประมวลผลสินค้าฟรี
+                await processItems(freeItems, true);
+
+                res.status(200).json({ message: "success" });
+            } catch (error) {
+                console.error("Error processing order:", error);
+                res.status(500).json({ message: "Error processing order", error });
+            }
         } else {
             console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
+            return res.status(500).json({ message: "Error inserting order", error: err });
         }
     });
+});
 
-})
+// ฟังก์ชันเพื่อแปลงการ query แบบ callback เป็น promise
+const queryPromise = (query, params) => {
+    return new Promise((resolve, reject) => {
+        connection.query(query, params, (err, results) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(results);
+            }
+        });
+    });
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 router.get('/order', (req, res, next) => {
     const od_id = Number(req.params.od_id);

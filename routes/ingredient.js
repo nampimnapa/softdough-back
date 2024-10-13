@@ -347,6 +347,7 @@ router.get('/readlotdetail', (req, res, next) => {
         ingredient_lot_detail il
     JOIN
         ingredient i ON il.ind_id = i.ind_id
+    where date_exp >= now()
     `;
 
     connection.query(query, (err, results) => {

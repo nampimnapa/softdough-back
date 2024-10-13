@@ -29,7 +29,7 @@ router.post('/addProductionOrder', (req, res, next) => {
     const productionOrderdetail = req.body.productionOrderdetail;
 
 
-    const query = "INSERT INTO productionOrder (cost_pricesum,pdo_status) VALUES (null,?)";
+    const query = "INSERT INTO productionorder (cost_pricesum,pdo_status) VALUES (null,?)";
 
     connection.query(query, [productionOrder.pdo_status], (err, results) => {
 
@@ -45,7 +45,7 @@ router.post('/addProductionOrder', (req, res, next) => {
             ]);
 
             const detailQuery = `
-                INSERT INTO productionOrderdetail (qty, status, pdo_id, pd_id, deleted_at) VALUES ?
+                INSERT INTO productionorderdetail (qty, status, pdo_id, pd_id, deleted_at) VALUES ?
             `;
 
             connection.query(detailQuery, [values], (err, results) => {
@@ -176,16 +176,20 @@ router.get('/readone/:pdo_id', (req, res, next) => {
                 DATE_FORMAT(pdo.updated_at, '%Y-%m-%d') AS updated_at_pdo,
                 pdod.*, pdc.pdc_name AS pdc_name ,pd.pd_name as pd_name
             FROM 
-                productionOrder pdo 
-                JOIN productionOrderdetail pdod ON pdo.pdo_id = pdod.pdo_id 
+                productionorder pdo 
+                JOIN productionorderdetail pdod ON pdo.pdo_id = pdod.pdo_id 
                 JOIN products pd ON pdod.pd_id = pd.pd_id 
-                JOIN productCategory pdc ON pd.pdc_id = pdc.pdc_id 
+                JOIN productcategory pdc ON pd.pdc_id = pdc.pdc_id 
             WHERE 
                 pdo.pdo_id = ? AND pdod.deleted_at IS NULL`;
 
-        // const [results] = await connection.query(query, [pdo_id]);
-        connection.query(query, pdo_id, (err, results) => {
-            if (results.length > 0) {
+        connection.query(query, [pdo_id], (err, results) => {
+            if (err) {
+                console.error("MySQL Query Error:", err);
+                return res.status(500).json({ message: "Error retrieving pdo", error: err });
+            }
+
+            if (results && results.length > 0) {
                 const formattedResult = {
                     pdo_id_name: results[0].pdo_id_name,
                     pdo_status: results[0].pdo_status,
@@ -196,8 +200,6 @@ router.get('/readone/:pdo_id', (req, res, next) => {
                         status: item.status,
                         pdo_id: item.pdo_id,
                         pd_id: item.pd_id,
-                        // created_at: item.created_at,
-                        // deleted_at: item.deleted_at,
                         pdc_name: item.pdc_name,
                         pd_name: item.pd_name
                     }))
@@ -205,14 +207,15 @@ router.get('/readone/:pdo_id', (req, res, next) => {
 
                 return res.status(200).json(formattedResult);
             } else {
-                return res.status(404).json({ message: "ingredient not found" });
+                return res.status(404).json({ message: "PDO not found" });
             }
-        })
+        });
     } catch (error) {
         console.error('Error retrieving pdo:', error);
         return res.status(500).json({ message: 'Error retrieving pdo', error });
     }
 });
+
 
 //edit
 router.patch('/editData/:pdo_id', (req, res, next) => {
@@ -223,7 +226,7 @@ router.patch('/editData/:pdo_id', (req, res, next) => {
     if (!dataToEdit || dataToEdit.length === 0) {
         return res.status(400).json({ message: "error", error: "No data to edit provided" });
     }
-    const query1 = `SELECT pdo_status FROM productionOrder WHERE pdo_id = ?`;
+    const query1 = `SELECT pdo_status FROM productionorder WHERE pdo_id = ?`;
 
     connection.query(query1, [pdo_id], (err, results) => {
         if (err) {
@@ -239,7 +242,7 @@ router.patch('/editData/:pdo_id', (req, res, next) => {
             const updateData = [];
             const insertData = [];
             const deleteData = [];
-            const query = `SELECT productionOrderdetail.pd_id FROM productionOrderdetail WHERE pdo_id = ?`;
+            const query = `SELECT productionorderdetail.pd_id FROM productionorderdetail WHERE pdo_id = ?`;
             console.log(dataToEdit)
 
             let pdIdsQ = dataToEdit.map(detail => detail.pd_id).filter(id => id !== undefined);
@@ -321,7 +324,7 @@ router.patch('/editData/:pdo_id', (req, res, next) => {
                 console.log("ed length", updateData.length)
                 if (deleteData.length > 0) {
                     // const deleteQuery = "DELETE FROM Ingredient_lot_detail WHERE ind_id = ? AND indl_id = ?";
-                    const deleteQuery = "UPDATE productionOrderdetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND pdo_id = ?";
+                    const deleteQuery = "UPDATE productionorderdetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND pdo_id = ?";
                     deleteData.forEach(detail => {
                         const deleteValues = [detail, pdo_id];
                         console.log(deleteValues)
@@ -341,7 +344,7 @@ router.patch('/editData/:pdo_id', (req, res, next) => {
                 if (insertData.length > 0) {
                     console.log("database inn", insertData)
                     console.log("pdo id", pdo_id)
-                    const insertQuery = "INSERT INTO productionOrderdetail (pd_id,qty, status, pdo_id , deleted_at) VALUES (?,?,?,?,?)";
+                    const insertQuery = "INSERT INTO productionorderdetail (pd_id,qty, status, pdo_id , deleted_at) VALUES (?,?,?,?,?)";
 
                     const flattenedineData = insertData.flat();
                     console.log("flattenedineData", flattenedineData)
@@ -373,7 +376,7 @@ router.patch('/editData/:pdo_id', (req, res, next) => {
                 if (updateData.length > 0) {
                     console.log("database uppp", updateData)
                     // const updateQuery = "UPDATE Ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ? WHERE ind_id = ? AND indl_id = ?";
-                    const updateQuery = "UPDATE productionOrderdetail SET qty = ?, status = 1, deleted_at = NULL WHERE pd_id = ? AND pdo_id = ?";
+                    const updateQuery = "UPDATE productionorderdetail SET qty = ?, status = 1, deleted_at = NULL WHERE pd_id = ? AND pdo_id = ?";
                     //การใช้ flat() จะช่วยให้คุณได้ array ที่ flatten แล้วที่มี object ภายใน ซึ่งจะทำให้ง่ายต่อการทำงานกับข้อมูลในลำดับถัดไป.
                     const flattenedUpdateData = updateData.flat();
                     console.log("flattenedUpdateData", flattenedUpdateData)
@@ -426,7 +429,7 @@ router.patch('/updatestatus/:pdo_id', (req, res, next) => {
 
 
     // Update pdo_status in productionOrder table
-    var updateProductionOrderQuery = "UPDATE productionOrder SET pdo_status = 2 WHERE pdo_id = ?";
+    var updateProductionOrderQuery = "UPDATE productionorder SET pdo_status = 2 WHERE pdo_id = ?";
     connection.query(updateProductionOrderQuery, [pdo_id], (err, results) => {
         if (err) {
             console.error("Error updating pdo_status in productionOrder:", err);
@@ -438,10 +441,10 @@ router.patch('/updatestatus/:pdo_id', (req, res, next) => {
         }
 
         // Update pdod_status in productionOrderdetail table
-        var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 2 WHERE pdo_id = ?";
+        var updateProductionOrderDetailQuery = "UPDATE productionorderdetail SET status = 2 WHERE pdo_id = ?";
         connection.query(updateProductionOrderDetailQuery, [pdo_id], (detailErr, detailResults) => {
             if (detailErr) {
-                console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
+                console.error("Error updating pdod_status in productionorderdetail:", detailErr);
                 return res.status(500).json(detailErr);
             }
 
@@ -455,7 +458,7 @@ router.patch('/updatestatus3/:pdo_id', (req, res, next) => {
 
 
     // Update pdo_status in productionOrder table
-    var updateProductionOrderQuery = "UPDATE productionOrder SET pdo_status = 3 WHERE pdo_id = ?";
+    var updateProductionOrderQuery = "UPDATE productionorder SET pdo_status = 3 WHERE pdo_id = ?";
     connection.query(updateProductionOrderQuery, [pdo_id], (err, results) => {
         if (err) {
             console.error("Error updating pdo_status in productionOrder:", err);
@@ -467,10 +470,10 @@ router.patch('/updatestatus3/:pdo_id', (req, res, next) => {
         }
 
         // Update pdod_status in productionOrderdetail table
-        var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 2 WHERE pdo_id = ?";
+        var updateProductionOrderDetailQuery = "UPDATE productionorderdetail SET status = 2 WHERE pdo_id = ?";
         connection.query(updateProductionOrderDetailQuery, [pdo_id], (detailErr, detailResults) => {
             if (detailErr) {
-                console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
+                console.error("Error updating pdod_status in productionorderdetail:", detailErr);
                 return res.status(500).json(detailErr);
             }
 
@@ -583,10 +586,10 @@ router.patch('/updatestatusdetail', (req, res, next) => {
     let hasErrorOccurred = false;
 
     pdod_ids.forEach(pdod_id => {
-        var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 3 WHERE pdod_id = ?";
+        var updateProductionOrderDetailQuery = "UPDATE productionorderdetail SET status = 3 WHERE pdod_id = ?";
         connection.query(updateProductionOrderDetailQuery, [pdod_id], (detailErr, detailResults) => {
             if (detailErr) {
-                console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
+                console.error("Error updating pdod_status in productionorderdetail:", detailErr);
                 if (!hasErrorOccurred) {
                     hasErrorOccurred = true;
                     return res.status(500).json(detailErr); // Return the error if one occurs
@@ -612,9 +615,9 @@ const Status35 = async (pdo_id, newStatus) => {
                 pdo.pdo_status as pdo_status,
                 pdod.status as pdode_status
             FROM 
-                productionOrder as pdo
+                productionorder as pdo
             LEFT JOIN 
-                productionOrderdetail AS pdod ON pdod.pdo_id = pdo.pdo_id
+                productionorderdetail AS pdod ON pdod.pdo_id = pdo.pdo_id
             WHERE  
                 pdo.pdo_id = ?
         `;
@@ -632,7 +635,7 @@ const Status35 = async (pdo_id, newStatus) => {
 
         if (allStatusesAreThree) {
             // Update the status in productionOrder if all details have status 3
-            const updateQuery = "UPDATE productionOrder SET pdo_status = ? WHERE pdo_id = ?";
+            const updateQuery = "UPDATE productionorder SET pdo_status = ? WHERE pdo_id = ?";
             await connection.promise().query(updateQuery, [newStatus, pdo_id]);
             console.log(`Updated status to ${newStatus} for pdo_id: ${pdo_id}`);
         } else {

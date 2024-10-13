@@ -195,7 +195,6 @@ router.post('/generate-pdf', async (req, res, next) => {
     }
 });
 
-
 // Save order
 // router.post('/order', async (req, res, next) => {
 //     const userId = req.session.st_id; // ดึง user_id จาก session

@@ -1,136 +1,50 @@
 const express = require("express");
 const connection = require("../connection");
 const router = express.Router();
-
-// router.post('/add',(req,res,next)=>{
-//     let staff = req.body;
-//     query = "insert into staff (st_username,st_password,st_name,st_tel,st_start,st_end,st_type,st_status) values(?,?,?,?,?,?,?,?)";
-//     connection.query(query, [owner.own_username, owner.own_password, owner.own_name], (err, results) => {
-//         if (!err) {
-//             return res.status(200).json({ message: "success" });
-//         } else {
-//             console.error("MySQL Error:", err);
-//             return res.status(500).json({ message: "error", error: err });
-//         }
-//     });      
-// })
-
 const bcrypt = require('bcrypt');
 const  {ifNotLoggedIn,ifLoggedIn, isAdmin,isUserProduction,isUserOrder} = require('../middleware')
 
+router.post('/add', async (req, res, next) => {
+  const staff = req.body;
 
-router.post('/add', (req, res, next) => {
-  let staff = req.body;
-
-  // Generate salt and hash password
-  bcrypt.hash(staff.st_password, 10, (hashErr, hash) => {
-    if (hashErr) {
-      console.error('Bcrypt Error:', hashErr);
-      return res.status(500).json({ message: 'error', error: hashErr });
-    }
+  try {
+    // Hash password
+    const hash = await bcrypt.hash(staff.st_password, 10);
 
     // Check if the username already exists
-    let checkUsernameQuery = 'SELECT COUNT(*) AS count FROM staff WHERE st_username = ?';
+    const [checkResults] = await connection.query(
+      'SELECT COUNT(*) AS count FROM staff WHERE st_username = ?',
+      [staff.st_username]
+    );
 
-    connection.query(checkUsernameQuery, [staff.st_username], (checkErr, checkResults) => {
-      if (!checkErr) {
-        // If username already exists, return an error response
-        if (checkResults[0].count > 0) {
-          return res.status(400).json({ message: 'Username already exists' });
-        }
+    if (checkResults[0].count > 0) {
+      return res.status(400).json({ message: 'Username already exists' });
+    }
 
-        // If username doesn't exist, proceed with the insertion
-        let insertQuery =
-          'INSERT INTO staff (st_username, st_password, st_name, st_tel, st_start, st_type, st_status) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    // Insert new staff
+    const [insertResult] = await connection.query(
+      'INSERT INTO staff (st_username, st_password, st_name, st_tel, st_start, st_type, st_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [
+        staff.st_username,
+        hash,
+        staff.st_name,
+        staff.st_tel,
+        staff.st_start,
+        staff.st_type,
+        staff.st_status,
+      ]
+    );
 
-        connection.query(
-          insertQuery,
-          [
-            staff.st_username,
-            hash, // Store hashed password
-            staff.st_name,
-            staff.st_tel,
-            staff.st_start,
-            staff.st_type,
-            staff.st_status,
-          ],
-          (err, results) => {
-            if (!err) {
-              console.log(req.session)
+    console.log(req.session);
+    res.status(200).json({ message: 'success', insertId: insertResult.insertId });
 
-              return res.status(200).json({ message: 'success' });
-            } else {
-              console.error('MySQL Error:', err);
-              return res.status(500).json({ message: 'error', error: err });
-            }
-          }
-        );
-      } else {
-        console.error('MySQL Error:', checkErr);
-        return res.status(500).json({ message: 'error', error: checkErr });
-      }
-    });
-  });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ message: 'error', error: error.message });
+  }
 });
 
 
-// router.post('/add', (req, res, next) => {
-//   let staff = req.body;
-
-//   // Check if the username already exists
-//   let checkUsernameQuery = 'SELECT COUNT(*) AS count FROM staff WHERE st_username = ?';
-
-//   connection.query(checkUsernameQuery, [staff.st_username], (checkErr, checkResults) => {
-//     if (!checkErr) {
-//       // If username already exists, return an error response
-//       if (checkResults[0].count > 0) {
-//         return res.status(400).json({ message: 'Username already exists' });
-//       }
-
-//       // If username doesn't exist, proceed with the insertion
-//       let insertQuery =
-//         'INSERT INTO staff (st_username, st_password, st_name, st_tel, st_start, st_type, st_status) VALUES (?, ?, ?, ?, ?, ?, ?)';
-
-//       connection.query(
-//         insertQuery,
-//         [
-//           staff.st_username,
-//           staff.st_password,
-//           staff.st_name,
-//           staff.st_tel,
-//           staff.st_start,
-//           staff.st_type,
-//           staff.st_status,
-//         ],
-//         (err, results) => {
-//           if (!err) {
-//             return res.status(200).json({ message: 'success' });
-//           } else {
-//             console.error('MySQL Error:', err);
-//             return res.status(500).json({ message: 'error', error: err });
-//           }
-//         }
-//       );
-//     } else {
-//       console.error('MySQL Error:', checkErr);
-//       return res.status(500).json({ message: 'error', error: checkErr });
-//     }
-//   });
-// });
-
-// ต้องปรับให้ใช้แบบ Async Await
-// router.get('/read', async(req, res, next) => {
-//   var query = 'select *from staff'
-//   connection.query(query, (err, results) => {
-//     if (!err) {
-//       return res.status(200).json(results);
-//     } else {
-//       return res.status(500).json(err);
-//     }
-//   });
-// })
-
-// แบบที่ถูกต้อง
 router.get('/read', async (req, res, next) => {
   try {
     const query = 'SELECT * FROM staff';
@@ -142,113 +56,101 @@ router.get('/read', async (req, res, next) => {
   }
 });
 
-router.get('/read/:id', (req, res, next) => {
+router.get('/read/:id', async (req, res, next) => {
   const st_id = req.params.id;
-  var query = `SELECT staff.*, 
-  DATE_FORMAT(st_start, '%Y-%m-%d') AS date_start,
-  DATE_FORMAT(st_end, '%Y-%m-%d') AS date_end
-   FROM staff WHERE st_id = ?`;
+  const query = `
+    SELECT staff.*, 
+    DATE_FORMAT(st_start, '%Y-%m-%d') AS date_start,
+    DATE_FORMAT(st_end, '%Y-%m-%d') AS date_end
+    FROM staff WHERE st_id = ?
+  `;
 
-  connection.query(query, [st_id], (err, results) => {
-    if (!err) {
-      if (results.length > 0) {
-        return res.status(200).json(results[0]);
-      } else {
-        return res.status(404).json({ message: "Staff not found" });
-      }
+  try {
+    const [results] = await connection.query(query, [st_id]);
+    
+    if (results.length > 0) {
+      return res.status(200).json(results[0]);
     } else {
-      return res.status(500).json(err);
+      return res.status(404).json({ message: "Staff not found" });
     }
-  });
+  } catch (err) {
+    console.error('Database query error:', err);
+    return res.status(500).json({ message: "Internal server error", error: err.message });
+  }
 });
 
-//อัปเดตทั้งหมด
-// router.patch('/update/:id', (req, res, next) => {
-//     const st_id = req.params.id;
-//     const staff = req.body;
-//     var query = "UPDATE staff SET st_username=?, st_password=?, st_name=?, st_tel=?, st_end=?,st_type=?, st_status=? WHERE st_id=?";
-//     connection.query(query, [staff.st_username, staff.st_password, staff.st_name, staff.st_tel, staff.st_end,staff.st_type, staff.st_status,st_id], (err, results) => {
-//         if (!err) {
-//             if (results.affectedRows === 0) {
-//                 console.error(err);
-//                 return res.status(404).json({ message: "id does not found" });
-//             }
-//             return res.status(200).json({ message: "update success" });
-//         } else {
-//             return res.status(500).json(err);
-//         }
-//     });
-// });
-
-//แค่ลาออก ยังไม่เทส
-
-router.patch('/updatestatus/:id', (req, res, next) => {
+router.patch('/updatestatus/:id', async (req, res, next) => {
   const st_id = req.params.id;
   const staff = req.body;
-  if (staff.st_status === 2) {
-    var query = "UPDATE staff SET st_status=?, st_end=? WHERE st_id=?";
-    connection.query(query, [staff.st_status, staff.st_end, st_id], (err, results) => {
-      if (!err) {
-        if (results.affectedRows === 0) {
-          console.error(err);
-          return res.status(404).json({ message: "id does not found" });
-        }
-        return res.status(200).json({ message: "update success" });
-      } else {
-        return res.status(500).json(err);
-      }
-    });
-  } else {
-    return res.status(500).json(err)
-  }
 
+  try {
+    if (staff.st_status === 2) {
+      const query = "UPDATE staff SET st_status=?, st_end=? WHERE st_id=?";
+      const [results] = await connection.query(query, [staff.st_status, staff.st_end, st_id]);
+
+      if (results.affectedRows === 0) {
+        return res.status(404).json({ message: "Staff not found" });
+      }
+      return res.status(200).json({ message: "Update successful" });
+    } else {
+      return res.status(400).json({ message: "Invalid status value" });
+    }
+  } catch (err) {
+    console.error('Database query error:', err);
+    return res.status(500).json({ message: "Internal server error", error: err.message });
+  }
 });
 
 //รวม ยังไม่เทส
-router.patch('/update/:id', (req, res, next) => {
+router.patch('/update/:id', async (req, res, next) => {
   const st_id = req.params.id;
   const staff = req.body;
 
-  // Check if st_status is 2
-  if (staff.st_status === "2"||staff.st_status ===2) {
+  try {
+    let query, params;
 
-    const updateData = req.body;
-
-    // Convert the st_end date string to a MySQL-compatible date format
-    const st_end = updateData.st_end ? new Date(updateData.st_end.split('-').reverse().join('-')) : null;
-
-    // Update only st_status and st_end
-    var query = `
+    if (staff.st_status === "2" || staff.st_status === 2) {
+      const st_end = staff.st_end ? new Date(staff.st_end.split('-').reverse().join('-')) : null;
+      query = `
         UPDATE staff 
         SET st_status = ?, st_end = ?
         WHERE st_id = ?
-    `;
+      `;
+      params = [staff.st_status, st_end, st_id];
+    } else {
+      // Hash the password if it's provided
+      if (staff.st_password) {
+        staff.st_password = await bcrypt.hash(staff.st_password, 10);
+      }
 
-    connection.query(query, [updateData.st_status, st_end, st_id], (err, results) => {
-      if (!err) {
-        if (results.affectedRows === 0) {
-          console.error(err);
-          return res.status(404).json({ message: "id does not found" });
-        }
-        return res.status(200).json({ message: "update success" });
+      // Handle st_type
+      let st_type;
+      if (staff.st_type === 'on') {
+        st_type = 1;  // หรือค่าที่เหมาะสมสำหรับ 'on'
+      } else if (staff.st_type === 'off') {
+        st_type = 0;  // หรือค่าที่เหมาะสมสำหรับ 'off'
       } else {
-        return res.status(500).json(err);
+        st_type = staff.st_type;  // ใช้ค่าที่ส่งมาถ้าไม่ใช่ 'on' หรือ 'off'
       }
-    });
-  } else {
-    // If st_status is not 2, update other fields as well
-    var query = "UPDATE staff SET st_username=?, st_password=?, st_name=?, st_tel=?, st_type=? WHERE st_id=?";
-    connection.query(query, [staff.st_username, staff.st_password, staff.st_name, staff.st_tel, staff.st_type, st_id], (err, results) => {
-      if (!err) {
-        if (results.affectedRows === 0) {
-          console.error(err);
-          return res.status(404).json({ message: "id does not found" });
-        }
-        return res.status(200).json({ message: "update success" });
-      } else {
-        return res.status(500).json(err);
-      }
-    });
+
+      query = `
+        UPDATE staff 
+        SET st_username = ?, st_password = ?, st_name = ?, st_tel = ?, st_type = ? 
+        WHERE st_id = ?
+      `;
+      params = [staff.st_username, staff.st_password, staff.st_name, staff.st_tel, st_type, st_id];
+    }
+
+    const [results] = await connection.query(query, params);
+
+    if (results.affectedRows === 0) {
+      return res.status(404).json({ message: "Staff not found" });
+    }
+    return res.status(200).json({ message: "Update successful" });
+
+  } catch (err) {
+    console.error('Database query error:', err);
+    return res.status(500).json({ message: "Internal server error", error: err.message });
   }
 });
 

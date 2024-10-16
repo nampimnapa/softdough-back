@@ -39,7 +39,7 @@ router.get('/readcat', (req, res, next) => {
 router.patch('/updatecat/:pdc_id', (req, res, next) => {
     const pdc_id = req.params.pdc_id;
     const sm = req.body;
-    var query = "UPDATE productCategory SET pdc_name=? WHERE pdc_id=?";
+    var query = "UPDATE productcategory SET pdc_name=? WHERE pdc_id=?";
     connection.query(query, [sm.pdc_name, pdc_id], (err, results) => {
         if (!err) {
             if (results.affectedRows === 0) {
@@ -995,7 +995,7 @@ router.get('/pdset/:pd_id', async (req, res, next) => {
     const pd_id = Number(req.params.pd_id);
     try {
         var query = `SELECT pd.* , rc.*, u.un_name as un_name  ,rcd.*,ind.ind_name as ind_name, pdc.pdc_name as pdc_name
-        FROM productCategory pdc
+        FROM productcategory pdc
         JOIN products pd ON pdc.pdc_id = pd.pdc_id
         JOIN recipe rc ON rc.pd_id = pd.pd_id
         JOIN recipedetail rcd ON rcd.rc_id = rc.rc_id

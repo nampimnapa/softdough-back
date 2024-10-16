@@ -2113,9 +2113,9 @@ router.get('/addUseIngrediantLotpro/:pdo_id', (req, res, next) => {
         rcd.*, 
         ind.*
     FROM 
-        productionOrder as pdo
+        productionorder as pdo
     JOIN 
-        productionOrderdetail as pdod ON pdod.pdo_id = pdo.pdo_id
+        productionorderdetail as pdod ON pdod.pdo_id = pdo.pdo_id
     JOIN 
         products as pd ON pd.pd_id = pdod.pd_id
     JOIN 
@@ -2452,13 +2452,13 @@ router.get('/readdetailLotpro/:pdo_id', (req, res, next) => {
         pdod.*, 
         ind.*
     FROM 
-        ingredient_Used_Pro as iup
+        ingredient_used_pro as iup
     JOIN 
-        ingredient_Used_detail as iud ON iup.indlde_id = iud.indlde_id
+        ingredient_used_detail as iud ON iup.indlde_id = iud.indlde_id
     JOIN 
-        productionOrderdetail as pdod ON iup.pdod_id = pdod.pdod_id	
+        productionorderdetail as pdod ON iup.pdod_id = pdod.pdod_id	
     JOIN 
-        productionOrder as pdo ON pdo.pdo_id = pdod.pdo_id	
+        productionorder as pdo ON pdo.pdo_id = pdod.pdo_id	
     JOIN 
         ingredient as ind ON ind.ind_id = iud.ind_id	
     WHERE 

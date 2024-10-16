@@ -9,7 +9,7 @@ router.get('/selectpdt/:pdc_id', (req, res, next) => {
     const pdc_id = Number(req.params.pdc_id);
 
     var query = `SELECT pd.pd_name, pdc.*
-    FROM productCategory pdc 
+    FROM productcategory pdc 
     JOIN products pd ON pdc.pdc_id = pd.pdc_id 
     WHERE pdc.pdc_id = ?`
     connection.query(query, pdc_id, (err, results) => {
@@ -571,6 +571,7 @@ router.patch('/updatestatus3/:pdo_id', (req, res, next) => {
 //         });
 //     });
 // });
+
 //35
 router.patch('/updatestatusdetail', (req, res, next) => {
     const pdod_ids = req.body.pdod_ids; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข

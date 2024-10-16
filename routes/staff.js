@@ -118,16 +118,29 @@ router.post('/add', (req, res, next) => {
 //   });
 // });
 
-router.get('/read',(req, res, next) => {
-  var query = 'select *from staff'
-  connection.query(query, (err, results) => {
-    if (!err) {
-      return res.status(200).json(results);
-    } else {
-      return res.status(500).json(err);
-    }
-  });
-})
+// ต้องปรับให้ใช้แบบ Async Await
+// router.get('/read', async(req, res, next) => {
+//   var query = 'select *from staff'
+//   connection.query(query, (err, results) => {
+//     if (!err) {
+//       return res.status(200).json(results);
+//     } else {
+//       return res.status(500).json(err);
+//     }
+//   });
+// })
+
+// แบบที่ถูกต้อง
+router.get('/read', async (req, res, next) => {
+  try {
+    const query = 'SELECT * FROM staff';
+    const [results] = await connection.query(query);
+    return res.status(200).json(results);
+  } catch (err) {
+    console.error('Error executing query:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
 router.get('/read/:id', (req, res, next) => {
   const st_id = req.params.id;

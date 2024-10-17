@@ -10,9 +10,9 @@ router.post('/add', async (req, res, next) => {
   try {
     // Hash password
     const hash = await bcrypt.hash(staff.st_password, 10);
-
+    const db = connection.promise();
     // Check if the username already exists
-    const [checkResults] = await connection.query(
+    const [checkResults] = await db.query(
       'SELECT COUNT(*) AS count FROM staff WHERE st_username = ?',
       [staff.st_username]
     );
@@ -22,7 +22,7 @@ router.post('/add', async (req, res, next) => {
     }
 
     // Insert new staff
-    const [insertResult] = await connection.query(
+    const [insertResult] = await db.query(
       'INSERT INTO staff (st_username, st_password, st_name, st_tel, st_start, st_type, st_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [
         staff.st_username,
@@ -48,7 +48,8 @@ router.post('/add', async (req, res, next) => {
 router.get('/read', async (req, res, next) => {
   try {
     const query = 'SELECT * FROM staff';
-    const [results] = await connection.query(query);
+    const db = connection.promise();
+    const [results] = await db.query(query);
     return res.status(200).json(results);
   } catch (err) {
     console.error('Error executing query:', err);
@@ -66,7 +67,8 @@ router.get('/read/:id', async (req, res, next) => {
   `;
 
   try {
-    const [results] = await connection.query(query, [st_id]);
+    const db = connection.promise();
+    const [results] = await db.query(query, [st_id]);
     
     if (results.length > 0) {
       return res.status(200).json(results[0]);
@@ -84,9 +86,10 @@ router.patch('/updatestatus/:id', async (req, res, next) => {
   const staff = req.body;
 
   try {
+    const db = connection.promise();
     if (staff.st_status === 2) {
       const query = "UPDATE staff SET st_status=?, st_end=? WHERE st_id=?";
-      const [results] = await connection.query(query, [staff.st_status, staff.st_end, st_id]);
+      const [results] = await db.query(query, [staff.st_status, staff.st_end, st_id]);
 
       if (results.affectedRows === 0) {
         return res.status(404).json({ message: "Staff not found" });
@@ -108,7 +111,7 @@ router.patch('/update/:id', async (req, res, next) => {
 
   try {
     let query, params;
-
+    const db = connection.promise();
     if (staff.st_status === "2" || staff.st_status === 2) {
       const st_end = staff.st_end ? new Date(staff.st_end.split('-').reverse().join('-')) : null;
       query = `
@@ -141,7 +144,7 @@ router.patch('/update/:id', async (req, res, next) => {
       params = [staff.st_username, staff.st_password, staff.st_name, staff.st_tel, st_type, st_id];
     }
 
-    const [results] = await connection.query(query, params);
+    const [results] = await db.query(query, params);
 
     if (results.affectedRows === 0) {
       return res.status(404).json({ message: "Staff not found" });

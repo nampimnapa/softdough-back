@@ -6,7 +6,7 @@ const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdm
 router.post('/addaddreess', async (req, res, next) => {
     const data = req.body;
     console.log('Body:', data); // Log request body
-
+    const db = connection.promise();
     const query = `
         INSERT INTO shop (sh_name, sh_address, sh_tel, sh_province, sh_district, sh_ampher, sh_zipcode, deleted_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?);
@@ -23,7 +23,7 @@ router.post('/addaddreess', async (req, res, next) => {
     ];
 
     try {
-        const [result] = await connection.query(query, values);
+        const [result] = await db.query(query, values);
         console.log('Insert result:', result); // Log insert result
         return res.status(201).json({ 
             message: "Address added successfully", 
@@ -42,7 +42,8 @@ router.get('/address', async (req, res, next) => {
     const query = 'SELECT * FROM shop';
 
     try {
-        const [results] = await connection.query(query);
+        const db = connection.promise();
+        const [results] = await db.query(query);
         return res.status(200).json(results);
     } catch (err) {
         console.error('Database query error:', err);
@@ -63,11 +64,12 @@ router.post('/circulating_money', isAdmin, async (req, res, next) => {
 
     try {
         // Check if there's already an entry for today
+        const db = connection.promise();
         const checkQuery = `
             SELECT cm_id FROM circulating_money 
             WHERE DATE(created_at) = CURDATE() AND user_id = ?;
         `;
-        const [existingEntries] = await connection.query(checkQuery, [userId]);
+        const [existingEntries] = await db.query(checkQuery, [userId]);
 
         if (existingEntries.length > 0) {
             return res.status(400).json({ message: "A record for today already exists." });
@@ -78,7 +80,7 @@ router.post('/circulating_money', isAdmin, async (req, res, next) => {
             INSERT INTO circulating_money (\`change\`, user_id)
             VALUES (?, ?);
         `;
-        const [insertResult] = await connection.query(insertQuery, [data.change, userId]);
+        const [insertResult] = await db.query(insertQuery, [data.change, userId]);
 
         return res.status(200).json({ 
             message: "success", 
@@ -103,7 +105,8 @@ router.get('/circulating_money', async (req, res, next) => {
     `;
 
     try {
-        const [results] = await connection.query(query);
+        const db = connection.promise();
+        const [results] = await db.query(query);
         return res.status(200).json(results);
     } catch (err) {
         console.error('Database query error:', err);
@@ -140,8 +143,9 @@ router.get('/price', async (req, res, next) => {
     `;
 
     try {
-        const [menuResults] = await connection.query(menuQuery);
-        const [detailResults] = await connection.query(detailQuery);
+        const db = connection.promise();
+        const [menuResults] = await db.query(menuQuery);
+        const [detailResults] = await db.query(detailQuery);
 
         // Create a map for quick lookup of details by sm_id
         const detailsMap = detailResults.reduce((acc, detail) => {
@@ -180,7 +184,8 @@ router.get('/ordertype', async (req, res, next) => {
     const query = 'SELECT * FROM orderstype WHERE deleted_at IS NULL';
 
     try {
-        const [results] = await connection.query(query);
+        const db = connection.promise();
+        const [results] = await db.query(query);
         return res.status(200).json(results);
     } catch (err) {
         console.error('Database query error:', err);
@@ -234,6 +239,7 @@ router.post('/addordertype', async (req, res, next) => {
         if (connection) connection.release();
     }
 });
+
 
 //แก้ไขราคาหน้าร้านบางฟิล
 router.patch('/updateprices', (req, res) => {

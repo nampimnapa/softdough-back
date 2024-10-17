@@ -7,6 +7,27 @@ const user = process.env.DATABASE_USER;
 const password = process.env.DATABASE_PASSWORD;
 const database = process.env.DATABASE_NAME;
 
+// โค้ดเดิมที่ทำมา ทำให้ Database ตัดการเชื่อมต่อ ไม่รองรับการเชื่อมต่อหลาย ๆ ทาง จนทำให้ระบบล่มในที่สุด
+// จะต้องใช้ Async/Await ในการจัดการกับการเรียกใช้ฐานข้อมูล
+// const db = mysql.createConnection(
+//     {
+//         host: host,
+//         port: port,
+//         user: user,
+//         password:password,
+//         database: database
+//     }
+// );
+
+
+// db.connect((err) => {
+//     if (err) {
+//         console.error("Connection failed. Error:", err);
+//     } else {
+//         console.log("Connection successful.");
+//     }
+// });
+
 const pool = mysql.createPool({
     host: host,
     port: port,
@@ -19,7 +40,7 @@ const pool = mysql.createPool({
 });
 
 
-const db = pool.promise();
+// const db = pool.promise();
 
 
 pool.getConnection((err, connection) => {
@@ -31,4 +52,4 @@ pool.getConnection((err, connection) => {
     connection.release();
 });
 
-module.exports = db;
+module.exports = pool;

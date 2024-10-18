@@ -700,6 +700,8 @@
 const express = require("express");
 const connection = require("../connection");
 const router = express.Router();
+const pool = require('../connection');
+
 const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder } = require('../middleware')
 
 
@@ -749,9 +751,9 @@ router.post('/addProductionOrder', async (req, res, next) => {
         res.status(200).json({ message: "success", pdo_id });
     } catch (error) {
         console.error("Database Error:", error);
-        res.status(500).json({ 
-            message: "An error occurred while adding production order", 
-            error: error.message 
+        res.status(500).json({
+            message: "An error occurred while adding production order",
+            error: error.message
         });
     }
 });
@@ -780,9 +782,9 @@ router.get('/readall', async (req, res, next) => {
         }
     } catch (error) {
         console.error("Database Query Error:", error);
-        return res.status(500).json({ 
-            message: "An error occurred while fetching production orders", 
-            error: error.message 
+        return res.status(500).json({
+            message: "An error occurred while fetching production orders",
+            error: error.message
         });
     }
 });
@@ -894,8 +896,8 @@ router.get('/readone/:pdo_id', (req, res, next) => {
                     updated_at: results[0].updated_at_pdo,
                     pdodetail: results.map(item => ({
                         pdod_id: item.pdod_id,
-                        pdod_broken:item.pdod_broken,
-                        pdod_over:item.pdod_over,
+                        pdod_broken: item.pdod_broken,
+                        pdod_over: item.pdod_over,
                         qty: item.qty,
                         status: item.status,
                         pdo_id: item.pdo_id,
@@ -1143,9 +1145,9 @@ router.patch('/updatestatus/:pdo_id', async (req, res, next) => {
         res.status(200).json({ message: "Update success" });
     } catch (error) {
         console.error("Database Error:", error);
-        res.status(500).json({ 
-            message: "An error occurred while updating production order status", 
-            error: error.message 
+        res.status(500).json({
+            message: "An error occurred while updating production order status",
+            error: error.message
         });
     }
 });
@@ -1323,7 +1325,6 @@ router.patch('/updatestatus3/:pdo_id', (req, res, next) => {
 //     ]
 //   }
 
-
 router.patch('/updatestatusdetail', (req, res, next) => {
     const pdodDetails = req.body.pdod_ids;
     const pdo_id = req.body.pdo_id;
@@ -1421,7 +1422,6 @@ function updateProductionOrderDetail(pdod_id, broken, over, callback) {
         });
     });
 }
-
 
 const Status35 = async (pdo_id, newStatus) => {
     console.log("Checking and updating status for pdo_id:", pdo_id);

@@ -3,106 +3,123 @@ const connection = require("../connection");
 const router = express.Router();
 const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder } = require('../middleware')
 
-router.post('/addaddreess', (req, res, next) => {
-    let Data = req.body;
-    console.log('Body:', req.body); // Check request body
-
+router.post('/addaddreess', async (req, res, next) => {
+    const data = req.body;
+    console.log('Body:', data); // Log request body
+    const db = connection.promise();
     const query = `
-        INSERT INTO shop (sh_name, sh_address, sh_tel, sh_province, sh_district,sh_ampher,sh_zipcode,deleted_at)
-        VALUES (?, ?, ?, ?, ?,?,?,?);
+        INSERT INTO shop (sh_name, sh_address, sh_tel, sh_province, sh_district, sh_ampher, sh_zipcode, deleted_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?);
     `;
     const values = [
-        Data.sh_name,
-        Data.sh_address,
-        Data.sh_tel,
-        Data.sh_province,
-        Data.sh_district,
-        Data.sh_ampher,
-        Data.sh_zipcode,
+        data.sh_name,
+        data.sh_address,
+        data.sh_tel,
+        data.sh_province,
+        data.sh_district,
+        data.sh_ampher,
+        data.sh_zipcode,
         null
     ];
 
-    connection.query(query, values, (err, results) => {
-        if (!err) {
-            return res.status(200).json({ message: "success" });
-        } else {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
-        }
-    });
+    try {
+        const [result] = await db.query(query, values);
+        console.log('Insert result:', result); // Log insert result
+        return res.status(201).json({ 
+            message: "Address added successfully", 
+            insertId: result.insertId 
+        });
+    } catch (err) {
+        console.error("Database Error:", err);
+        return res.status(500).json({ 
+            message: "An error occurred while adding the address", 
+            error: err.message 
+        });
+    }
 });
 
-router.get('/address', (req, res, next) => {
-    var query = 'select * from shop'
-    connection.query(query, (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-})
+router.get('/address', async (req, res, next) => {
+    const query = 'SELECT * FROM shop';
 
-router.post('/circulating_money', isAdmin, (req, res, next) => {
-    let Data = req.body;
-    const userId = req.session.st_id; // ดึง user_id จาก session
+    try {
+        const db = connection.promise();
+        const [results] = await db.query(query);
+        return res.status(200).json(results);
+    } catch (err) {
+        console.error('Database query error:', err);
+        return res.status(500).json({
+            message: "An error occurred while fetching shop addresses",
+            error: err.message
+        });
+    }
+});
+
+router.post('/circulating_money', isAdmin, async (req, res, next) => {
+    const data = req.body;
+    const userId = req.session.st_id;
+
     if (!userId) {
         return res.status(403).json({ message: 'Access Forbidden: No user ID found in session' });
     }
-    // Check if there's already an entry for today
-    const checkQuery = `
-        SELECT cm_id FROM circulating_money 
-        WHERE DATE(created_at) = CURDATE() AND user_id = ?;
-    `;
 
-    connection.query(checkQuery, [userId], (err, results) => {
-        if (err) {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
-        }
+    try {
+        // Check if there's already an entry for today
+        const db = connection.promise();
+        const checkQuery = `
+            SELECT cm_id FROM circulating_money 
+            WHERE DATE(created_at) = CURDATE() AND user_id = ?;
+        `;
+        const [existingEntries] = await db.query(checkQuery, [userId]);
 
-        if (results.length > 0) {
+        if (existingEntries.length > 0) {
             return res.status(400).json({ message: "A record for today already exists." });
-        } else {
-            // Insert data into circulating_money
-            const insertQuery = `
-                INSERT INTO circulating_money (\`change\`, user_id)
-                VALUES (?, ?);
-            `;
-            const values = [
-                Data.change,
-                userId
-            ];
-
-            connection.query(insertQuery, values, (err, results) => {
-                if (err) {
-                    console.error("MySQL Error:", err);
-                    return res.status(500).json({ message: "error", error: err });
-                }
-                return res.status(200).json({ message: "success" });
-            });
         }
-    });
+
+        // Insert data into circulating_money
+        const insertQuery = `
+            INSERT INTO circulating_money (\`change\`, user_id)
+            VALUES (?, ?);
+        `;
+        const [insertResult] = await db.query(insertQuery, [data.change, userId]);
+
+        return res.status(200).json({ 
+            message: "success", 
+            insertId: insertResult.insertId 
+        });
+
+    } catch (err) {
+        console.error("Database Error:", err);
+        return res.status(500).json({ 
+            message: "An error occurred while processing your request", 
+            error: err.message 
+        });
+    }
 });
 
-router.get('/circulating_money', (req, res, next) => {
-    var query = `select circulating_money.*,
-                DATE_FORMAT(circulating_money.created_at, '%d-%m-%Y') AS created_at
-                FROM circulating_money
-                ORDER BY circulating_money.created_at DESC ;
-    `
-    connection.query(query, (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-})
+router.get('/circulating_money', async (req, res, next) => {
+    const query = `
+        SELECT circulating_money.*,
+        DATE_FORMAT(circulating_money.created_at, '%d-%m-%Y') AS created_at
+        FROM circulating_money
+        ORDER BY circulating_money.created_at DESC
+    `;
+
+    try {
+        const db = connection.promise();
+        const [results] = await db.query(query);
+        return res.status(200).json(results);
+    } catch (err) {
+        console.error('Database query error:', err);
+        return res.status(500).json({
+            message: "An error occurred while fetching circulating money data",
+            error: err.message
+        });
+    }
+});
 
 //ordertype
-router.get('/price', (req, res, next) => {
-    const query = `
+router.get('/price', async (req, res, next) => {
+    const menuQuery = `
     SELECT 
         sm.sm_id, 
         sm.sm_name, 
@@ -125,132 +142,104 @@ router.get('/price', (req, res, next) => {
         JOIN ordersType ot ON otd.odt_id = ot.odt_id
     `;
 
-    connection.query(query, (err, menuResults) => {
-        if (err) {
-            console.error("MySQL Query Error:", err);
-            return res.status(500).json({ message: "error", error: err });
-        }
+    try {
+        const db = connection.promise();
+        const [menuResults] = await db.query(menuQuery);
+        const [detailResults] = await db.query(detailQuery);
 
-        connection.query(detailQuery, (err, detailResults) => {
-            if (err) {
-                console.error("MySQL Query Error:", err);
-                return res.status(500).json({ message: "error", error: err });
+        // Create a map for quick lookup of details by sm_id
+        const detailsMap = detailResults.reduce((acc, detail) => {
+            if (!acc[detail.sm_id]) {
+                acc[detail.sm_id] = [];
             }
-
-            // Create a map for quick lookup of details by sm_id
-            const detailsMap = {};
-            detailResults.forEach(detail => {
-                if (!detailsMap[detail.sm_id]) {
-                    detailsMap[detail.sm_id] = [];
-                }
-                detailsMap[detail.sm_id].push({
-                    [`odt_id${detail.detail_odt_id}`]: detail.detail_odt_id,
-                    [`odt_name${detail.detail_odt_id}`]: detail.odt_name,
-                    [`odtd_price${detail.detail_odt_id}`]: detail.odtd_price
-                });
+            acc[detail.sm_id].push({
+                [`odt_id${detail.detail_odt_id}`]: detail.detail_odt_id,
+                [`odt_name${detail.detail_odt_id}`]: detail.odt_name,
+                [`odtd_price${detail.detail_odt_id}`]: detail.odtd_price
             });
+            return acc;
+        }, {});
 
-            // Add pricedeli to menu results
-            const formattedResults = menuResults.map(menu => {
-                return {
-                    ...menu,
-                    pricedeli: detailsMap[menu.sm_id] && detailsMap[menu.sm_id].length > 0
-                        ? detailsMap[menu.sm_id]
-                        : "ไม่มีข้อมูล"
-                };
-            });
+        // Add pricedeli to menu results
+        const formattedResults = menuResults.map(menu => ({
+            ...menu,
+            pricedeli: detailsMap[menu.sm_id] && detailsMap[menu.sm_id].length > 0
+                ? detailsMap[menu.sm_id]
+                : "ไม่มีข้อมูล"
+        }));
 
-            return res.status(200).json(formattedResults);
+        return res.status(200).json(formattedResults);
+
+    } catch (err) {
+        console.error("Database Query Error:", err);
+        return res.status(500).json({ 
+            message: "An error occurred while fetching price data", 
+            error: err.message 
         });
-    });
+    }
 });
 
 
-router.get('/ordertype', (req, res, next) => {
-    var q = 'select * from ordersType where deleted_at is null'
-    connection.query(q, (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-})
+router.get('/ordertype', async (req, res, next) => {
+    const query = 'SELECT * FROM orderstype WHERE deleted_at IS NULL';
 
-// router.post('/addordertype', (req, res, next) => {
-//     let type = req.body;
-//     // console.log('Body:', req.body); // Check request body
+    try {
+        const db = connection.promise();
+        const [results] = await db.query(query);
+        return res.status(200).json(results);
+    } catch (err) {
+        console.error('Database query error:', err);
+        return res.status(500).json({
+            message: "An error occurred while fetching order types",
+            error: err.message
+        });
+    }
+});
 
-//     const query = `
-//         INSERT INTO ordersType (odt_id, odt_name, odt_per ,deleted_at)
-//         VALUES (?, ?, ?, ?);
-//     `;
-//     const values = [
-//         type.odt_id,
-//         type.odt_name,
-//         type.odt_per,
-//         null
-//     ];
-
-//     connection.query(query, values, (err, results) => {
-//         if (!err) {
-//             return res.status(200).json({ message: "success" });
-//         } else {
-//             console.error("MySQL Error:", err);
-//             return res.status(500).json({ message: "error", error: err });
-//         }
-//     });
-// });
 
 //ใหม่
-router.post('/addordertype', (req, res, next) => {
+router.post('/addordertype', async (req, res, next) => {
     const { odt_id, odt_name, odt_per, priceup, detail } = req.body;
 
-    // เพิ่มข้อมูลใน ordersType
-    const insertOrderTypeQuery = `
-        INSERT INTO ordersType (odt_id, odt_name, odt_per, deleted_at)
-        VALUES (?, ?, ?, ?);
-    `;
-    const orderTypeValues = [
-        odt_id,
-        odt_name,
-        odt_per,
-        null
-    ];
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
 
-    connection.query(insertOrderTypeQuery, orderTypeValues, (err, results) => {
-        if (err) {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
-        }
+        // เพิ่มข้อมูลใน ordersType
+        const insertOrderTypeQuery = `
+            INSERT INTO orderstype (odt_id, odt_name, odt_per, deleted_at)
+            VALUES (?, ?, ?, ?);
+        `;
+        const orderTypeValues = [odt_id, odt_name, odt_per, null];
+        await connection.query(insertOrderTypeQuery, orderTypeValues);
 
-        // ถ้าเพิ่มข้อมูลใน ordersType สำเร็จ
-        // วนลูปเพื่อเพิ่มข้อมูลใน ordersTypeDetail
-        let detailInsertQuery = `
-            INSERT INTO ordersTypeDetail (sm_id, odt_id, odtd_price, deleted_at)
+        // เพิ่มข้อมูลใน ordersTypeDetail
+        const detailInsertQuery = `
+            INSERT INTO orderstypedetail (sm_id, odt_id, odtd_price, deleted_at)
             VALUES (?, ?, ?, null);
         `;
 
-        detail.forEach(item => {
+        for (const item of detail) {
             const odtd_price = item.sm_price + priceup;
-            const detailValues = [
-                item.sm_id,
-                odt_id,  // อ้างอิง odt_id จากที่เพิ่มใน ordersType
-                odtd_price
-            ];
+            const detailValues = [item.sm_id, odt_id, odtd_price];
+            await connection.query(detailInsertQuery, detailValues);
+        }
 
-            connection.query(detailInsertQuery, detailValues, (err, results) => {
-                if (err) {
-                    console.error("MySQL Error (Detail):", err);
-                    return res.status(500).json({ message: "error", error: err });
-                }
-            });
+        await connection.commit();
+        res.status(201).json({ message: "Order type and details added successfully" });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error("Database Error:", error);
+        res.status(500).json({ 
+            message: "An error occurred while adding order type and details", 
+            error: error.message 
         });
-
-        // ส่ง response กลับหลังจากเพิ่มข้อมูลสำเร็จ
-        return res.status(200).json({ message: "success" });
-    });
+    } finally {
+        if (connection) connection.release();
+    }
 });
+
 
 //แก้ไขราคาหน้าร้านบางฟิล
 router.patch('/updateprices', (req, res) => {

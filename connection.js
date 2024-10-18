@@ -7,36 +7,30 @@ const user = process.env.DATABASE_USER;
 const password = process.env.DATABASE_PASSWORD;
 const database = process.env.DATABASE_NAME;
 
-// const db = mysql.createConnection(
-//     {
-//         host: host,
-//         port: port,
-//         user: user,
-//         password:password,
-//         database: database
-//         // database:'softdough'
-//     }
-// );
 
+const pool = mysql.createPool({
+    host: host,
+    port: port,
+    user: user,
+    password: password,
+    database: database,
+    connectionLimit: 10,
+    waitForConnections: true,
+    queueLimit: 0
 
-// localhost
-const db = mysql.createConnection(
-    {
-        host: '127.0.0.1',
-        port:'3306',
-        user:'root',
-        password:'',
-        database:'softdough_sep'
-        // database:'softdough'
-    }
-);
-
-db.connect((err) => {
-    if (err) {
-        console.error("Connection failed. Error:", err);
-    } else {
-        console.log("Connection successful.");
-    }
 });
 
-module.exports = db;
+
+// const db = pool.promise();
+
+
+pool.getConnection((err, connection) => {
+    if (err) {
+        console.error("Error connecting to the database:", err);
+        return;
+    }
+    console.log("Successfully connected to the database.");
+    connection.release();
+});
+
+module.exports = pool;

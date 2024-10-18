@@ -721,54 +721,47 @@ router.get('/selectpdt/:pdc_id', (req, res, next) => {
 })
 
 //ยังไม่เพิ่มส่วน คำนวณต้นทุน
-router.post('/addProductionOrder', (req, res, next) => {
-    // const ingredient_lot = req.body;
-    // const ingredient_lot_detail = req.body;
-    const productionOrder = req.body.productionOrder[0]; // Access the first item in the productionOrder array
+router.post('/addProductionOrder', async (req, res, next) => {
+    const productionOrder = req.body.productionOrder[0];
     const productionOrderdetail = req.body.productionOrderdetail;
 
+    try {
+        const insertQuery = "INSERT INTO productionorder (cost_pricesum, pdo_status) VALUES (null, ?)";
+        const [results] = await connection.promise().query(insertQuery, [productionOrder.pdo_status]);
 
-    const query = "INSERT INTO productionorder (cost_pricesum,pdo_status) VALUES (null,?)";
+        const pdo_id = results.insertId;
+        console.log(productionOrder.pdo_status, "productionOrder.pdo_status");
 
-    connection.query(query, [productionOrder.pdo_status], (err, results) => {
+        const values = productionOrderdetail.map(detail => [
+            detail.qty,
+            productionOrder.pdo_status,
+            pdo_id,
+            detail.pd_id,
+            null // กำหนดให้ deleted_at เป็น null
+        ]);
 
-        if (!err) {
-            const pdo_id = results.insertId;
-            console.log(productionOrder.pdo_status, "productionOrder.pdo_status")
-            const values = productionOrderdetail.map(detail => [
-                detail.qty,
-                productionOrder.pdo_status,
-                pdo_id,
-                detail.pd_id,
-                null // กำหนดให้ deleted_at เป็น null
-            ]);
+        const detailQuery = `
+            INSERT INTO productionorderdetail (qty, status, pdo_id, pd_id, deleted_at) VALUES ?
+        `;
 
-            const detailQuery = `
-                INSERT INTO productionorderdetail (qty, status, pdo_id, pd_id, deleted_at) VALUES ?
-            `;
+        await connection.promise().query(detailQuery, [values]);
 
-            connection.query(detailQuery, [values], (err, results) => {
-                if (err) {
-                    console.error("MySQL Error:", err);
-                    return res.status(500).json({ message: "error", error: err });
-                } else {
-                    return res.status(200).json({ message: "success", pdo_id });
-                }
-            });
-        } else {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
-        }
-    });
-
+        res.status(200).json({ message: "success", pdo_id });
+    } catch (error) {
+        console.error("Database Error:", error);
+        res.status(500).json({ 
+            message: "An error occurred while adding production order", 
+            error: error.message 
+        });
+    }
 });
-router.get('/readall', (req, res, next) => {
-    // const indl_id = req.params.id;
-    var query = `
+
+router.get('/readall', async (req, res, next) => {
+    const query = `
     SELECT
         productionorder.*,
         CONCAT('PD', LPAD(pdo_id, 7, '0')) AS pdo_id_name,
-        DATE_FORMAT(updated_at, '%Y-%m-%d') AS 	updated_at,
+        DATE_FORMAT(updated_at, '%Y-%m-%d') AS updated_at,
         pdo_status
     FROM 
         productionorder 
@@ -777,17 +770,21 @@ router.get('/readall', (req, res, next) => {
     ORDER BY updated_at DESC   
     `;
 
-    connection.query(query, (err, results) => {
-        if (!err) {
-            if (results.length > 0) {
-                return res.status(200).json(results);
-            } else {
-                return res.status(404).json({ message: " productionOrder not found" });
-            }
+    try {
+        const [results] = await connection.promise().query(query);
+
+        if (results.length > 0) {
+            return res.status(200).json(results);
         } else {
-            return res.status(500).json(err);
+            return res.status(404).json({ message: "Production orders not found" });
         }
-    });
+    } catch (error) {
+        console.error("Database Query Error:", error);
+        return res.status(500).json({ 
+            message: "An error occurred while fetching production orders", 
+            error: error.message 
+        });
+    }
 });
 
 // router.get('/readone/:pdo_id', (req, res, next) => {
@@ -1127,33 +1124,30 @@ router.patch('/editData/:pdo_id', (req, res, next) => {
 // });
 
 //ยืนยันการผลิต 2=กำลังดำเนินการผลิต
-router.patch('/updatestatus/:pdo_id', (req, res, next) => {
+router.patch('/updatestatus/:pdo_id', async (req, res, next) => {
     const pdo_id = req.params.pdo_id;
 
+    try {
+        // Update pdo_status in productionOrder table
+        const updateProductionOrderQuery = "UPDATE productionorder SET pdo_status = 2 WHERE pdo_id = ?";
+        const [orderResults] = await connection.promise().query(updateProductionOrderQuery, [pdo_id]);
 
-    // Update pdo_status in productionOrder table
-    var updateProductionOrderQuery = "UPDATE productionorder SET pdo_status = 2 WHERE pdo_id = ?";
-    connection.query(updateProductionOrderQuery, [pdo_id], (err, results) => {
-        if (err) {
-            console.error("Error updating pdo_status in productionOrder:", err);
-            return res.status(500).json(err);
-        }
-
-        if (results.affectedRows === 0) {
+        if (orderResults.affectedRows === 0) {
             return res.status(404).json({ message: "Production order not found" });
         }
 
         // Update pdod_status in productionOrderdetail table
-        var updateProductionOrderDetailQuery = "UPDATE productionorderdetail SET status = 2 WHERE pdo_id = ?";
-        connection.query(updateProductionOrderDetailQuery, [pdo_id], (detailErr, detailResults) => {
-            if (detailErr) {
-                console.error("Error updating pdod_status in productionorderdetail:", detailErr);
-                return res.status(500).json(detailErr);
-            }
+        const updateProductionOrderDetailQuery = "UPDATE productionorderdetail SET status = 2 WHERE pdo_id = ?";
+        await connection.promise().query(updateProductionOrderDetailQuery, [pdo_id]);
 
-            return res.status(200).json({ message: "Update success" });
+        res.status(200).json({ message: "Update success" });
+    } catch (error) {
+        console.error("Database Error:", error);
+        res.status(500).json({ 
+            message: "An error occurred while updating production order status", 
+            error: error.message 
         });
-    });
+    }
 });
 
 router.patch('/updatestatus3/:pdo_id', (req, res, next) => {

@@ -10,85 +10,71 @@ const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder ,isAdm
 
 
 const util = require('util');
-const executeAsync = util.promisify(connection.execute).bind(connection);
-
-// Middleware to initialize req.session
-
+// const executeAsync = util.promisify(connection.execute).bind(connection);
+const db = connection.promise();
 
 router.post('/login', ifLoggedIn, [
-    body('username').custom((value) => {
-        return executeAsync("select st_username from staff where st_username = ?", [value])
-            .then(([rows]) => {
-                console.log(rows)
-                if (rows) {
-                    return true;
-                }
-                return Promise.reject('Invalid st_username')
-            });
+    body('username').custom(async (value) => {
+        const [rows] = await db.query("SELECT st_username FROM staff WHERE st_username = ?", [value]);
+        if (rows.length > 0) {
+            return true;
+        }
+        return Promise.reject('Invalid st_username');
     }),
-    body('password', 'pass is empty').trim().not().isEmpty(),
-], (req, res) => {
+    body('password', 'Password is empty').trim().not().isEmpty(),
+], async (req, res) => {
     const validation_Result = validationResult(req);
     const { username, password } = req.body;
-    console.log(username, password)
 
-    if (validation_Result.isEmpty()) {
-        executeAsync('select * from staff where st_username = ?', [username])
-            .then(([rows]) => {
-                console.log(rows)
-                bcrypt.compare(password, rows.st_password).then(compare_result => {
-                    if (compare_result === true) {
-                        req.session.isLoggedIn = true;
-                        req.session.st_id = rows.st_id;
-                        req.session.st_type = rows.st_type; // Set userRole in session
+    if (!validation_Result.isEmpty()) {
+        const allErrors = validation_Result.errors.map(error => error.msg);
+        return res.status(400).json({
+            login_errors: allErrors
+        });
+    }
 
-                        // Redirect based on user role
-                        // if (req.session.st_type === '0') {
-                        //     res.status(200).json({ message: "Successful admin login" });
-                        //     console.log(req.session)
-                        // } else if (req.session.st_type === '1') {
-                        //     res.status(200).json({ message: "Successful production login" });
-                        //     console.log(req.session)
+    try {
+        const [rows] = await db.query("SELECT * FROM staff WHERE st_username = ?", [username]);
+        
+        if (rows.length === 0) {
+            return res.status(401).json({
+                login_errors: ['Invalid username or password']
+            });
+        }
 
-                        // } else if (req.session.st_type === '2') {
-                        //     res.status(200).json({ message: "Successful order login" });
-                        //     console.log(req.session)
+        const user = rows[0];
 
-                        // } else {
-                        //     // Send "Successful login" message for API JSON testing
-                        //     res.json({ message: "Successful login" });
-                        // }
-                        if (req.session.st_type === '0') {
-                            res.status(200).json({ message: "Successful admin login", st_id: req.session.st_id });
-                            console.log(req.session)
-                        } else if (req.session.st_type === '1') {
-                            res.status(200).json({ message: "Successful production login", st_id: req.session.st_id });
-                            console.log(req.session)
-                        } else if (req.session.st_type === '2') {
-                            res.status(200).json({ message: "Successful order login", st_id: req.session.st_id });
-                            console.log(req.session)
-                        } else {
-                            res.json({ message: "Successful login", st_id: req.session.st_id }); // เพิ่ม st_id ที่นี่
-                        }
-                        
-                    } else {
-                        res.status(500).json({
-                            login_errors: ['Invalid password']
-                        })
-                    }
-                }).catch(err => {
-                    if (err) throw err;
-                })
-            }).catch(err => {
-                if (err) throw err;
-            })
-    } else {
-        let allerror = validation_Result.errors.map((error) => {
-            return error.msg;
-        })
+        const isPasswordValid = await bcrypt.compare(password, user.st_password);
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                login_errors: ['Invalid password']
+            });
+        }
+
+        // Successful login
+        req.session.isLoggedIn = true;
+        req.session.st_id = user.st_id;
+        req.session.st_type = user.st_type;
+
+        let loginMessage = "Successful login";
+        if (req.session.st_type === '0') {
+            loginMessage = "Successful admin login";
+        } else if (req.session.st_type === '1') {
+            loginMessage = "Successful production login";
+        } else if (req.session.st_type === '2') {
+            loginMessage = "Successful order login";
+        }
+
+        res.status(200).json({
+            message: loginMessage,
+            st_id: req.session.st_id
+        });
+    } catch (error) {
+        console.error(error);
         res.status(500).json({
-            login_errors: allerror
-        })
+            message: 'Internal Server Error',
+            error: error.message
+        });
     }
 });
  

@@ -227,7 +227,7 @@ router.post('/generate-pdf', async (req, res, next) => {
 //         note,
 //         sh_id,
 //         odt_id,
-//         dc_id,
+//         dc_id ? dc_id : null, // Set to null if not provided
 //         userId // Assuming you also want to store user ID
 //     ];
 //     const query = `INSERT INTO \`order\`(od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype, od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
@@ -263,7 +263,7 @@ router.post('/generate-pdf', async (req, res, next) => {
 
 
 
-// เทสหักสต้อก
+// เทสหักสต้อก คือต้องทำใหม่
 router.post('/order', async (req, res, next) => {
     const userId = req.session.st_id; // ดึง user_id จาก session
     const {
@@ -293,7 +293,8 @@ router.post('/order', async (req, res, next) => {
                 INSERT INTO orderdetail (od_id, sm_id, odde_qty, odde_sum) VALUES ?;
             `;
 
-            const allItems = [...selectedItems, ...freeItems];
+            // Ensure freeItems and selectedItems are arrays
+            const allItems = [...(Array.isArray(selectedItems) ? selectedItems : []), ...(Array.isArray(freeItems) ? freeItems : [])];
             const detailValues = allItems.map(detail => {
                 const odde_sum = detail.price * detail.quantity;
                 return [
@@ -339,7 +340,7 @@ router.post('/order', async (req, res, next) => {
 
                                 // อัพเดท qty ใหม่ใน productionorderdetail
                                 const updateProductionOrderQuery = `
-                                    UPDATE productionorderdetail SET qty = ? WHERE pdod_id = ?;
+                                    UPDATE productionorderdetail SET pdod_stock = ? WHERE pdod_id = ?;
                                 `;
                                 await queryPromise(updateProductionOrderQuery, [newQty, pdod_id]);
 

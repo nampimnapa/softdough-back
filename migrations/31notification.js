@@ -32,6 +32,21 @@ module.exports = {
             type: {
                 type: Sequelize.STRING(1)
             },
+            qty:{
+                type: Sequelize.INTEGER,
+                allowNull: true
+            },
+            qtyday:{
+                type: Sequelize.INTEGER,
+                allowNull: true
+            },
+            indlde_id :{
+                type: Sequelize.INTEGER,
+                allowNull: true,
+                references: {
+                    model: 'ingredient_lot_detail',
+                    key: 'indlde_id'
+                }            },
             created_at: {
                 allowNull: false,
                 type: Sequelize.DATE,

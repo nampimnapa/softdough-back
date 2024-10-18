@@ -57,7 +57,7 @@ module.exports = {
             },
             dc_id: {
                 type: Sequelize.INTEGER,
-                allowNull: false,
+                allowNull: true,
                 references: {
                     model: 'discount',
                     key: 'dc_id'

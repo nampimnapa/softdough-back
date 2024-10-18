@@ -24,6 +24,9 @@ module.exports = {
                     model: 'productionOrderdetail',
                     key: 'pdod_id'
                 }
+            },
+            qty: {
+                type: Sequelize.INTEGER
             }
             
                 

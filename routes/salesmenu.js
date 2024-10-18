@@ -10,56 +10,103 @@ const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdm
 
 
 
-router.get('/unit', (req, res, next) => {
-    var query = 'select *from unit where type="2"'
-    connection.query(query, (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-})
+router.get('/unit', async (req, res, next) => {
+    const query = 'SELECT * FROM unit WHERE type = ?';
 
-router.post('/addtype', (req, res, next) => {
-    let type = req.body;
-    query = "insert into salesMenuType (smt_name,un_id,qty_per_unit) values(?,?,?)";
-    connection.query(query, [type.smt_name, type.un_id, type.qty_per_unit], (err, results) => {
-        if (!err) {
-            return res.status(200).json({ message: "success" });
-        } else {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
-        }
-    });
-})
+    try {
+        const [results] = await connection.promise().query(query, ['2']);
+        return res.status(200).json(results);
+    } catch (error) {
+        console.error("Database Query Error:", error);
+        return res.status(500).json({ 
+            message: "An error occurred while fetching units", 
+            error: error.message 
+        });
+    }
+});
 
-router.get('/readsmt', (req, res, next) => {
-    var query = 'select *from salesmenutype'
-    connection.query(query, (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-})
+router.post('/addtype', async (req, res, next) => {
+    const { smt_name, un_id, qty_per_unit } = req.body;
 
-router.patch('/updatesmt/:smt_id', (req, res, next) => {
+    // Basic validation
+    if (!smt_name || !un_id || qty_per_unit === undefined) {
+        return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const query = "INSERT INTO salesmenutype (smt_name, un_id, qty_per_unit) VALUES (?, ?, ?)";
+
+    try {
+        const [result] = await connection.promise().query(query, [smt_name, un_id, qty_per_unit]);
+        
+        return res.status(201).json({ 
+            message: "Category added successfully", 
+            typeId: result.insertId 
+        });
+    } catch (error) {
+        console.error("Database Query Error:", error);
+        return res.status(500).json({ 
+            message: "An error occurred while adding the sales menu type", 
+            error: error.message 
+        });
+    }
+});
+
+router.get('/readsmt', async (req, res, next) => {
+    const query = 'SELECT * FROM salesmenutype';
+
+    try {
+        const [results] = await connection.promise().query(query);
+        return res.status(200).json(results);
+    } catch (error) {
+        console.error("Database Query Error:", error);
+        return res.status(500).json({ 
+            message: "An error occurred while fetching sales menu types", 
+            error: error.message 
+        });
+    }
+});
+
+// router.patch('/updatesmt/:smt_id', (req, res, next) => {
+//     const smt_id = req.params.smt_id;
+//     const sm = req.body;
+//     var query = "UPDATE salesmenutype SET smt_name=?,un_id=?,qty_per_unit=? WHERE smt_id=?";
+//     connection.query(query, [sm.smt_name, sm.un_id, sm.qty_per_unit, smt_id], (err, results) => {
+//         if (!err) {
+//             if (results.affectedRows === 0) {
+//                 console.error(err);
+//                 return res.status(404).json({ message: "id does not found" });
+//             }
+//             return res.status(200).json({ message: "update success" });
+//         } else {
+//             return res.status(500).json(err);
+//         }
+//     });
+// });
+
+router.patch('/updatesmt/:smt_id', async (req, res, next) => {
     const smt_id = req.params.smt_id;
-    const sm = req.body;
-    var query = "UPDATE salesmenuType SET smt_name=?,un_id=?,qty_per_unit=? WHERE smt_id=?";
-    connection.query(query, [sm.smt_name, sm.un_id, sm.qty_per_unit, smt_id], (err, results) => {
-        if (!err) {
-            if (results.affectedRows === 0) {
-                console.error(err);
-                return res.status(404).json({ message: "id does not found" });
-            }
-            return res.status(200).json({ message: "update success" });
-        } else {
-            return res.status(500).json(err);
+    const { smt_name, un_id, qty_per_unit } = req.body;
+
+    const query = "UPDATE salesmenutype SET smt_name = ?, un_id = ?, qty_per_unit = ? WHERE smt_id = ?";
+
+    try {
+        const [result] = await connection.promise().query(query, [smt_name, un_id, qty_per_unit, smt_id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Sales menu type not found" });
         }
-    });
+
+        return res.status(200).json({ 
+            message: "Sales menu type updated successfully",
+            updatedId: smt_id
+        });
+    } catch (error) {
+        console.error("Database Query Error:", error);
+        return res.status(500).json({ 
+            message: "An error occurred while updating the sales menu type", 
+            error: error.message 
+        });
+    }
 });
 
 // router.post('/addsm', (req, res, next) => {
@@ -87,35 +134,67 @@ router.patch('/updatesmt/:smt_id', (req, res, next) => {
 // })
 
 //read sm ข้อมูลโชว์หมดไม่ได้จัด
-router.get('/sm/:sm_id', (req, res, next) => {
+router.get('/sm/:sm_id', async (req, res, next) => {
     const sm_id = Number(req.params.sm_id);
 
-    var query = `SELECT sm.*, smt.*, smd.* 
-    FROM salesmenutype smt 
-    JOIN salesmenu sm ON sm.smt_id = smt.smt_id 
-    JOIN salesmenudetail smd ON sm.sm_id = smd.sm_id 
-    WHERE sm.sm_id = ? and smd.deleted_at IS NULL`
-    connection.query(query, sm_id, (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-})
+    if (isNaN(sm_id)) {
+        return res.status(400).json({ message: 'Invalid sales menu ID' });
+    }
 
-router.get('/smt/:id', (req, res, next) => {
+    const query = `
+        SELECT sm.*, smt.*, smd.* 
+        FROM salesmenutype smt 
+        JOIN salesmenu sm ON sm.smt_id = smt.smt_id 
+        JOIN salesmenudetail smd ON sm.sm_id = smd.sm_id 
+        WHERE sm.sm_id = ? AND smd.deleted_at IS NULL
+    `;
+
+    try {
+        const [results] = await connection.promise().query(query, [sm_id]);
+
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'Sales menu not found' });
+        }
+
+        // Process the results if needed
+        const processedResults = results.map(result => ({
+            ...result,
+            picture: result.picture ? `${result.picture}` : null
+            // Add any other necessary transformations here
+        }));
+
+        return res.status(200).json(processedResults);
+    } catch (error) {
+        console.error('Error retrieving sales menu:', error);
+        return res.status(500).json({ 
+            message: 'An error occurred while retrieving the sales menu', 
+            error: error.message 
+        });
+    }
+});
+
+router.get('/smt/:id', async (req, res, next) => {
     const smt_id = Number(req.params.id);
 
-    var query = `select *from salesmenutype where smt_id=?`
-    connection.query(query, smt_id, (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
+    const query = `SELECT * FROM salesmenutype WHERE smt_id = ?`;
+
+    try {
+        const [results] = await connection.promise().query(query, [smt_id]);
+        
+        if (results.length === 0) {
+            return res.status(404).json({ message: "Sales menu type not found" });
         }
-    });
-})
+        
+        return res.status(200).json(results);
+    } catch (error) {
+        console.error("Database Query Error:", error);
+        return res.status(500).json({ 
+            message: "An error occurred while fetching the sales menu type", 
+            error: error.message 
+        });
+    }
+});
+
 
 // จัดคร่าวๆ
 // router.get('/smset/:sm_id', async (req, res, next) => {
@@ -227,32 +306,30 @@ router.get('/smset/:sm_id', async (req, res, next) => {
 //resd sm all
 router.get('/small', async (req, res, next) => {
     try {
-        var query = `SELECT sm.* , smt.smt_name FROM salesmenutype smt JOIN salesmenu sm ON sm.smt_id = smt.smt_id`;
+        const query = `
+            SELECT sm.*, smt.smt_name 
+            FROM salesmenutype smt 
+            JOIN salesmenu sm ON sm.smt_id = smt.smt_id
+        `;
 
-        connection.query(query, (err, results) => {
-            if (err) {
-                console.error('Error retrieving sm:', err);
-                return res.status(500).json({ message: 'Error retrieving sm', error: err });
-            }
+        const [results] = await connection.promise().query(query);
 
-            if (results.length === 0) {
-                return res.status(404).json({ message: 'sm not found' });
-            }
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'No sales menu items found' });
+        }
 
-            // Loop through the results to modify each result as needed
-            results.forEach(result => {
-                // If the product contains picture data
-                if (result.picture) {
-                    // Include the base64-encoded picture data in the response
-                    result.picture = `${result.picture}`;
-                }
-            });
+        const formattedResults = results.map(result => ({
+            ...result,
+            picture: result.picture ? `${result.picture}` : null
+        }));
 
-            return res.status(200).json(results);
-        });
+        return res.status(200).json(formattedResults);
     } catch (error) {
-        console.error('Error retrieving sm:', error);
-        return res.status(500).json({ message: 'Error retrieving sm', error });
+        console.error('Error retrieving sales menu:', error);
+        return res.status(500).json({ 
+            message: 'An error occurred while retrieving the sales menu', 
+            error: error.message 
+        });
     }
 });
 
@@ -264,119 +341,62 @@ router.post('/addsm', async (req, res) => {
     const { name, type, price, status, selltype, image } = req.body;
     const salesmenudetail = req.body.product;
 
+    const conn = await connection.promise().getConnection();
 
     try {
+        await conn.beginTransaction();
 
-        const salesmenuWithPicture = { sm_name: name, smt_id: type, sm_price: price, status, fix: selltype, picture: image };
-        console.log(salesmenuWithPicture, selltype)
-        connection.beginTransaction((err) => {
-            if (err) {
-                return res.status(500).json({ message: 'Transaction start error', error: err });
+        const salesmenuWithPicture = { 
+            sm_name: name, 
+            smt_id: type, 
+            sm_price: price, 
+            status, 
+            fix: selltype, 
+            picture: image 
+        };
+
+        const [salesmenuResult] = await conn.query('INSERT INTO salesmenu SET ?', salesmenuWithPicture);
+        const salesmenuId = salesmenuResult.insertId;
+
+        if (!salesmenuId) {
+            throw new Error('Invalid salesmenu insertion result');
+        }
+
+        if (Array.isArray(salesmenudetail) && salesmenuId) {
+            let salesmenudetailQuery;
+            let values;
+
+            if (selltype === "1" || selltype === 1) {
+                salesmenudetailQuery = `INSERT INTO salesmenudetail (sm_id, pd_id, qty, deleted_at) VALUES ?`;
+                values = salesmenudetail.map(detail => [salesmenuId, detail.pd_id, detail.qty, null]);
+            } else if (selltype === "2" || selltype === 2) {
+                salesmenudetailQuery = `INSERT INTO salesmenudetail (sm_id, pd_id, qty, deleted_at) VALUES ?`;
+                values = salesmenudetail.map(detail => [salesmenuId, detail.pd_id, null, null]);
+            } else {
+                throw new Error('Invalid fix value');
             }
 
-            connection.query('INSERT INTO salesMenu SET ?', salesmenuWithPicture, (err, salesmenuResult) => {
-                if (err) {
-                    console.error('Error inserting salesmenu:', err);
-                    connection.rollback(() => {
-                        res.status(500).json({ message: 'Error inserting salesmenu', error: err });
-                    });
-                    return res.status(500).json({ message: 'An error occurred' });
-                }
+            await conn.query(salesmenudetailQuery, [values]);
+        } else {
+            throw new Error('Invalid salesmenudetail format');
+        }
 
-                // if (!salesmenuResult || !salesmenuResult.insertId) {
-                //     console.error('salesMenu insertion result is invalid:', salesmenuResult);
-                //     connection.rollback(() => {
-                //         res.status(500).json({ message: 'Invalid salesmenu insertion result' });
-                //     });
-                //     return res.status(500).json({ message: 'An error occurred' });
-                // }
-                let salesmenuId = salesmenuResult.insertId;
-                //สำรองถ้า tsx ส่งมาละไม่ได้ ติด สตริงสัมติง
-                //ก่อนติดสตริงจะไม่มี
-                const salesmenudetailar = salesmenudetail;
+        await conn.commit();
 
-                if (salesmenudetailar && Array.isArray(salesmenudetailar) && salesmenuId) {
-                    if (selltype === "1" || selltype === 1) {
-                        const salesmenudetail1 = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, detail.qty, null]);
-                        const salesmenudetailQuery = `INSERT INTO salesMenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
-                        connection.query(salesmenudetailQuery, [salesmenudetail1], (err, detailResults) => {
-                            if (err) {
-                                connection.rollback(() => {
-                                    return res.status(500).json({ message: 'Error inserting salesmenu details', error: err });
-                                });
-                            }
-                            if (!detailResults || !detailResults.insertId) {
-                                console.error('salesMenu insertion result is invalid:', salesmenuResult);
-                                connection.rollback(() => {
-                                    res.status(500).json({ message: 'Invalid salesmenu insertion result 1' });
-                                });
-                                return res.status(500).json({ message: 'An error occurred detail' });
-                            }
-
-
-                        });
-                    } else if (selltype === "2" || selltype === 2) {
-                        console.log("Type 2", salesmenudetailar)
-                        const salesmenudetailWithNullQty = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, null, null]); // กำหนดค่า qty เป็น null ในแต่ละรายการ
-                        const salesmenudetailQuery = `INSERT INTO salesMenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
-                        connection.query(salesmenudetailQuery, [salesmenudetailWithNullQty], (err, detailResults) => {
-                            if (err) {
-                                connection.rollback(() => {
-                                    return res.status(500).json({ message: 'Error inserting salesmenu details', error: err });
-                                });
-                            }
-                            if (!detailResults || !detailResults.insertId) {
-                                console.error('salesMenu insertion result is invalid:', salesmenudetailWithNullQty);
-                                connection.rollback(() => {
-                                    res.status(500).json({ message: 'Invalid salesmenu insertion result 2' });
-                                });
-                                return res.status(500).json({ message: 'An error occurred' });
-                            }
-                        });
-                    } else {
-                        return res.status(500).json({ message: 'Invalid fix value' });
-                    }
-                    if (err) {
-                        console.error('Error inserting salesmenu:', err);
-                        connection.rollback(() => {
-                            res.status(500).json({ message: 'Error inserting salesmenu', error: err });
-                        });
-                        return res.status(500).json({ message: 'An error occurred' });
-                    }
-
-                    // if (!detailResults || !detailResults.insertId) {
-                    //     console.error('salesMenu insertion result is invalid:', salesmenuResult);
-                    //     connection.rollback(() => {
-                    //         res.status(500).json({ message: 'Invalid salesmenu insertion result' });
-                    //     });
-                    //     return res.status(500).json({ message: 'An error occurred' });
-                    // }
-
-                    connection.commit((err) => {
-                        if (err) {
-                            connection.rollback(() => {
-                                return res.status(500).json({ message: 'Transaction commit error', error: err });
-                            });
-                        }
-
-                        return res.json({
-                            salesmenuId,
-                            message: 'salesmenu and salesmenudetail added successfully!',
-                        });
-                    });
-                } else {
-                    return res.status(400).json({
-                        salesmenuId,
-                        message: 'Invalid salesmenudetail format นอย',
-                    });
-                }
-
-
-            });
+        res.status(200).json({
+            salesmenuId,
+            message: 'salesmenu and salesmenudetail added successfully!'
         });
+
     } catch (error) {
-        console.error('Error resizing image:', error);
-        return res.status(500).json({ message: 'Error resizing image', error });
+        await conn.rollback();
+        console.error('Error in addsm:', error);
+        res.status(500).json({ 
+            message: 'An error occurred while adding salesmenu', 
+            error: error.message 
+        });
+    } finally {
+        conn.release();
     }
 });
 
@@ -386,130 +406,63 @@ router.patch('/editsm/:sm_id', async (req, res) => {
     const sm_id = req.params.sm_id;
     const { sm_name, smt_id, sm_price, status, fix, salesmenudetail, picture } = req.body;
 
+    const conn = await connection.promise().getConnection();
+
     try {
+        await conn.beginTransaction();
+
         const salesmenuWithPicture = { sm_name, smt_id, sm_price, fix, picture, status };
-        console.log(salesmenudetail);
 
-        connection.beginTransaction(async (err) => {
-            if (err) {
-                res.status(500).json({ message: 'Error updating salesMenu', error: err });
-                return;
-            }
+        const [salesMenuResult] = await conn.query(
+            'UPDATE salesMenu SET ?, updated_at = CURRENT_TIMESTAMP WHERE sm_id = ?',
+            [salesmenuWithPicture, sm_id]
+        );
 
-            try {
-                const [salesMenuResult] = await connection.promise().query(
-                    'UPDATE salesMenu SET ?, updated_at = CURRENT_TIMESTAMP WHERE sm_id = ?',
-                    [salesmenuWithPicture, sm_id]
+        if (salesMenuResult.affectedRows === 0) {
+            throw new Error('Sales menu not found');
+        }
+
+        if (salesmenudetail && salesmenudetail.length > 0) {
+            const [existingDetails] = await conn.query('SELECT pd_id FROM salesMenudetail WHERE sm_id = ?', [sm_id]);
+            const existingPdIds = existingDetails.map(result => result.pd_id);
+            const newPdIds = salesmenudetail.map(detail => detail.pd_id);
+
+            const updateData = salesmenudetail.filter(item => existingPdIds.includes(item.pd_id));
+            const insertData = salesmenudetail.filter(item => !existingPdIds.includes(item.pd_id));
+            const deleteData = existingPdIds.filter(id => !newPdIds.includes(id));
+
+            if (deleteData.length > 0) {
+                await conn.query(
+                    'UPDATE salesMenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id IN (?) AND sm_id = ?',
+                    [deleteData, sm_id]
                 );
-
-                if (!salesMenuResult || salesMenuResult.affectedRows === 0) {
-                    throw new Error('Invalid salesMenu update result');
-                }
-
-                if (salesmenudetail && salesmenudetail.length > 0) {
-                    console.log('Sending')
-                    if (fix === "1") {
-                        console.log("fix1")
-
-                        const query = 'SELECT pd_id FROM salesMenudetail WHERE sm_id = ?';
-                        const [results] = await connection.promise().query(query, [sm_id]);
-
-                        const existingPdIds = results.map(result => result.pd_id);
-                        const newPdIds = salesmenudetail.map(detail => detail.pd_id);
-
-                        const updateData = salesmenudetail.filter(item => existingPdIds.includes(item.pd_id));
-                        const insertData = salesmenudetail.filter(item => !existingPdIds.includes(item.pd_id));
-                        const deleteData = existingPdIds.filter(id => !newPdIds.includes(id));
-
-                        if (deleteData.length > 0) {
-                            const deleteQuery = 'UPDATE salesMenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND sm_id = ?';
-                            for (const pd_id of deleteData) {
-                                await connection.promise().query(deleteQuery, [pd_id, sm_id]);
-                            }
-                        }
-
-                        if (insertData.length > 0) {
-                            const insertQuery = 'INSERT INTO salesMenudetail (sm_id, pd_id, qty, deleted_at) VALUES ?';
-                            const insertValues = insertData.map(detail => [sm_id, detail.pd_id, detail.qty, null]);
-                            await connection.promise().query(insertQuery, [insertValues]);
-                        }
-
-                        if (updateData.length > 0) {
-                            const updateQuery = 'UPDATE salesMenudetail SET qty = ?, deleted_at = NULL WHERE pd_id = ? AND sm_id = ?';
-                            for (const detail of updateData) {
-                                await connection.promise().query(updateQuery, [detail.qty, detail.pd_id, sm_id]);
-                            }
-                        }
-                    } else if (fix === "2") {
-                        console.log("fix2")
-                        // if (deleteData.length > 0) {
-                        //     const deleteQuery = 'UPDATE salesMenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND sm_id = ?';
-                        //     for (const pd_id of deleteData) {
-                        //         await connection.promise().query(deleteQuery, [pd_id, sm_id]);
-                        //     }
-                        // }
-
-                        // if (insertData.length > 0) {
-                        //     const insertQuery = 'INSERT INTO salesMenudetail (sm_id, pd_id, qty, deleted_at) VALUES ?';
-                        //     const insertValues = insertData.map(detail => [sm_id, detail.pd_id, null, null]);
-                        //     await connection.promise().query(insertQuery, [insertValues]);
-                        // }
-
-                        // if (updateData.length > 0) {
-                        //     const updateQuery = 'UPDATE salesMenudetail SET qty = ?, deleted_at = NULL, pd_id = ? WHERE sm_id = ?';
-                        //     for (const detail of salesmenudetail) {
-                        //         await connection.promise().query(updateQuery, [null, detail.pd_id, sm_id]);
-                        //     }
-                        // }
-
-                        const query = 'SELECT pd_id FROM salesMenudetail WHERE sm_id = ?';
-                        const [results] = await connection.promise().query(query, [sm_id]);
-
-                        const existingPdIds = results.map(result => result.pd_id);
-                        const newPdIds = salesmenudetail.map(detail => detail.pd_id);
-
-                        // Determine which data to update, insert, or delete
-                        const updateData = salesmenudetail.filter(item => existingPdIds.includes(item.pd_id));
-                        const insertData = salesmenudetail.filter(item => !existingPdIds.includes(item.pd_id));
-                        const deleteData = existingPdIds.filter(id => !newPdIds.includes(id));
-
-                        // Delete data
-                        if (deleteData.length > 0) {
-                            const deleteQuery = 'UPDATE salesMenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND sm_id = ?';
-                            for (const pd_id of deleteData) {
-                                await connection.promise().query(deleteQuery, [pd_id, sm_id]);
-                            }
-                        }
-
-                        // Insert new data
-                        if (insertData.length > 0) {
-                            const insertQuery = 'INSERT INTO salesMenudetail (sm_id, pd_id, qty, deleted_at) VALUES ?';
-                            const insertValues = insertData.map(detail => [sm_id, detail.pd_id, null, null]);
-                            await connection.promise().query(insertQuery, [insertValues]);
-                        }
-
-                        // Update existing data
-                        if (updateData.length > 0) {
-                            const updateQuery = 'UPDATE salesMenudetail SET qty = ?, deleted_at = NULL WHERE sm_id = ? AND pd_id = ?';
-                            for (const detail of salesmenudetail) {
-                                await connection.promise().query(updateQuery, [detail.qty, sm_id, detail.pd_id]);
-                            }
-                        }
-                    } else {
-                        throw new Error('Invalid fix value');
-                    }
-                }
-
-                await connection.promise().commit();
-                res.json({ message: 'Product updated successfully!' });
-            } catch (error) {
-                await connection.promise().rollback();
-                res.status(500).json({ message: 'Transaction error', error: error.message });
             }
-        });
+
+            if (insertData.length > 0) {
+                const insertQuery = 'INSERT INTO salesMenudetail (sm_id, pd_id, qty, deleted_at) VALUES ?';
+                const insertValues = insertData.map(detail => [sm_id, detail.pd_id, fix === "1" ? detail.qty : null, null]);
+                await conn.query(insertQuery, [insertValues]);
+            }
+
+            if (updateData.length > 0) {
+                const updateQuery = 'UPDATE salesMenudetail SET qty = ?, deleted_at = NULL WHERE pd_id = ? AND sm_id = ?';
+                for (const detail of updateData) {
+                    await conn.query(updateQuery, [fix === "1" ? detail.qty : null, detail.pd_id, sm_id]);
+                }
+            }
+        }
+
+        await conn.commit();
+        res.json({ message: 'Sales menu updated successfully!' });
     } catch (error) {
-        console.error('Error processing request:', error);
-        res.status(500).json({ message: 'Error processing request', error: error.message });
+        await conn.rollback();
+        console.error('Error updating sales menu:', error);
+        res.status(500).json({ 
+            message: 'An error occurred while updating the sales menu', 
+            error: error.message 
+        });
+    } finally {
+        conn.release();
     }
 });
 

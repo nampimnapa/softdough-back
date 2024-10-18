@@ -447,33 +447,44 @@ router.patch('/updatestatus/:pdo_id', async (req, res, next) => {
     }
 });
 
-router.patch('/updatestatus3/:pdo_id', (req, res, next) => {
+router.patch('/updatestatus3/:pdo_id', async (req, res, next) => {
     const pdo_id = req.params.pdo_id;
 
+    const conn = await connection.promise().getConnection();
 
-    // Update pdo_status in productionOrder table
-    var updateProductionOrderQuery = "UPDATE productionorder SET pdo_status = 3 WHERE pdo_id = ?";
-    connection.query(updateProductionOrderQuery, [pdo_id], (err, results) => {
-        if (err) {
-            console.error("Error updating pdo_status in productionOrder:", err);
-            return res.status(500).json(err);
-        }
+    try {
+        await conn.beginTransaction();
 
-        if (results.affectedRows === 0) {
+        // Update pdo_status in productionOrder table
+        const [orderResults] = await conn.query(
+            "UPDATE productionorder SET pdo_status = 3 WHERE pdo_id = ?",
+            [pdo_id]
+        );
+
+        if (orderResults.affectedRows === 0) {
+            await conn.rollback();
             return res.status(404).json({ message: "Production order not found" });
         }
 
         // Update pdod_status in productionOrderdetail table
-        var updateProductionOrderDetailQuery = "UPDATE productionorderdetail SET status = 2 WHERE pdo_id = ?";
-        connection.query(updateProductionOrderDetailQuery, [pdo_id], (detailErr, detailResults) => {
-            if (detailErr) {
-                console.error("Error updating pdod_status in productionorderdetail:", detailErr);
-                return res.status(500).json(detailErr);
-            }
+        await conn.query(
+            "UPDATE productionorderdetail SET status = 2 WHERE pdo_id = ?",
+            [pdo_id]
+        );
 
-            return res.status(200).json({ message: "Update success" });
+        await conn.commit();
+        res.status(200).json({ message: "Update successful" });
+
+    } catch (error) {
+        await conn.rollback();
+        console.error("Error updating production order status:", error);
+        res.status(500).json({ 
+            message: "An error occurred while updating production order status", 
+            error: error.message 
         });
-    });
+    } finally {
+        conn.release();
+    }
 });
 
 //แก้ไขให้=3 เสร็จสิ้นแล้วสำหรับรายละเอียดบางอัน

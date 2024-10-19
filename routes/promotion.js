@@ -5,7 +5,7 @@ const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdm
 
 router.post('/adddis', (req, res, next) => {
     let Data = req.body;
-    console.log('Body:', req.body); // Check request body
+    console.log('Body:', req.body);
 
     const query = `
         INSERT INTO discount (dc_name, dc_detail, dc_diccountprice, datestart, dateend,minimum,deleted_at)
@@ -31,15 +31,14 @@ router.post('/adddis', (req, res, next) => {
     });
 });
 
-router.get('/readdis', (req, res, next) => {
-    var query = 'select *,DATE_FORMAT(discount.datestart, "%d-%m-%Y") AS datestart,DATE_FORMAT(discount.dateend, "%d-%m-%Y") AS dateend from discount'
-    connection.query(query, (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
+router.get('/readdis', async (req, res, next) => {
+    var query = 'select *,DATE_FORMAT(discount.datestart, "%d-%m-%Y") AS datestart,DATE_FORMAT(discount.dateend, "%d-%m-%Y") AS dateend from discount';
+    try {
+        const [results] = await connection.promise().query(query)
+        return res.status(200).json(results);
+    } catch (error) {
+        return res.status(500).json(err);
+    }
 })
 
 router.get('/readdis/:id', (req, res, next) => {
@@ -48,44 +47,44 @@ router.get('/readdis/:id', (req, res, next) => {
     DATE_FORMAT(datestart, '%Y-%m-%d') AS datestart,
     DATE_FORMAT(dateend, '%Y-%m-%d') AS dateend
      FROM discount WHERE dc_id = ?`;
-  
+
     connection.query(query, [id], (err, results) => {
-      if (!err) {
-        if (results.length > 0) {
-          return res.status(200).json(results[0]);
+        if (!err) {
+            if (results.length > 0) {
+                return res.status(200).json(results[0]);
+            } else {
+                return res.status(404).json({ message: "Staff not found" });
+            }
         } else {
-          return res.status(404).json({ message: "Staff not found" });
+            return res.status(500).json(err);
         }
-      } else {
-        return res.status(500).json(err);
-      }
     });
-  });
+});
 
 
-  router.patch('/update/:id' ,(req, res, next) => {
+router.patch('/update/:id', (req, res, next) => {
     const dc_id = req.params.id;
     const discount = req.body;
-  
-    
-      var query = "UPDATE discount SET dc_name=?, dc_detail=?, dc_diccountprice=?, datestart=?, dateend=? ,minimum=? ,updated_at=CURRENT_TIMESTAMP() WHERE dc_id=?";
-      connection.query(query, [discount.dc_name, discount.dc_detail, discount.dc_diccountprice, discount.datestart, discount.dateend, discount.minimum,dc_id], (err, results) => {
+
+
+    var query = "UPDATE discount SET dc_name=?, dc_detail=?, dc_diccountprice=?, datestart=?, dateend=? ,minimum=? ,updated_at=CURRENT_TIMESTAMP() WHERE dc_id=?";
+    connection.query(query, [discount.dc_name, discount.dc_detail, discount.dc_diccountprice, discount.datestart, discount.dateend, discount.minimum, dc_id], (err, results) => {
         if (!err) {
-          if (results.affectedRows === 0) {
-            console.error(err);
-            return res.status(404).json({ message: "id does not found" });
-          }
-          return res.status(200).json({ message: "update success" });
+            if (results.affectedRows === 0) {
+                console.error(err);
+                return res.status(404).json({ message: "id does not found" });
+            }
+            return res.status(200).json({ message: "update success" });
         } else {
-          return res.status(500).json(err);
+            return res.status(500).json(err);
         }
-      });
-    
-  });
+    });
+
+});
 
 
 
-  //addpro free
+//addpro free
 //   router.post('/addfree', (req, res, next) => {
 //     // const ingredient_lot = req.body;
 //     // const ingredient_lot_detail = req.body;
@@ -153,8 +152,8 @@ router.post('/addfree', (req, res, next) => {
             const pm_id = results.insertId;
 
             // Flatten the arrays into pairs
-            const values = promotiondetail.flatMap(detail => 
-                detail.smbuy_id.flatMap(smbuy_id => 
+            const values = promotiondetail.flatMap(detail =>
+                detail.smbuy_id.flatMap(smbuy_id =>
                     detail.smfree_id.map(smfree_id => [
                         pm_id,
                         smbuy_id,
@@ -370,8 +369,8 @@ router.put('/updatefree', (req, res, next) => {
                 }
 
                 // Prepare new details to insert
-                const newDetails = promotiondetail.flatMap(detail => 
-                    detail.smbuy_id.flatMap(smbuy_id => 
+                const newDetails = promotiondetail.flatMap(detail =>
+                    detail.smbuy_id.flatMap(smbuy_id =>
                         detail.smfree_id.map(smfree_id => [
                             pm_id,
                             smbuy_id,

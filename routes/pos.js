@@ -110,7 +110,7 @@ router.get('/sm/:sm_id', (req, res, next) => {
     const sm_id = Number(req.params.sm_id);
 
     var query = `
-    SELECT sm.*, smt.*, smd.*, p.pd_name,
+    SELECT sm.*, smt.*, smd.*, p.pd_name,pc.pdc_name,
            CASE 
                WHEN sm.fix = '2' THEN p.pd_name 
                ELSE NULL 
@@ -119,6 +119,7 @@ router.get('/sm/:sm_id', (req, res, next) => {
     JOIN salesmenu sm ON sm.smt_id = smt.smt_id 
     JOIN salesmenudetail smd ON sm.sm_id = smd.sm_id 
     LEFT JOIN products p ON smd.pd_id = p.pd_id  
+    JOIN productcategory pc ON p.pdc_id = pc.pdc_id
     WHERE sm.sm_id = ? 
       AND smd.deleted_at IS NULL`;
 

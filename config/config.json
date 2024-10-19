@@ -2,21 +2,21 @@
   "development": {
     "username": "root",
     "password": "softdough@db",
-    "database": "softdough_dev",
+    "database": "softdoughdb",
     "host": "147.50.230.32",
     "dialect": "mysql"
   },
   "test": {
     "username": "root",
     "password": "softdough@db",
-    "database": "softdough_dev",
+    "database": "softdoughdb",
     "host": "147.50.230.32",
     "dialect": "mysql"
   },
   "production": {
     "username": "root",
     "password": "softdough@db",
-    "database": "softdough_dev",
+    "database": "softdoughdb",
     "host": "147.50.230.32",
     "dialect": "mysql"
   }

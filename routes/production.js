@@ -1183,9 +1183,9 @@ router.patch('/updatestatus3/:pdo_id', async (req, res, next) => {
     } catch (error) {
         await conn.rollback();
         console.error("Error updating production order status:", error);
-        res.status(500).json({ 
-            message: "An error occurred while updating production order status", 
-            error: error.message 
+        res.status(500).json({
+            message: "An error occurred while updating production order status",
+            error: error.message
         });
     } finally {
         conn.release();
@@ -1336,145 +1336,62 @@ router.patch('/updatestatus3/:pdo_id', async (req, res, next) => {
 //     ]
 //   }
 
-router.patch('/updatestatusdetail', (req, res, next) => {
-    const pdodDetails = req.body.pdod_ids;
-    const pdo_id = req.body.pdo_id;
-    const pdo_status = req.body.pdo_status;
+// const express = require('express');
+// const connection = require("../connection");
+// const router = express.Router();
+// ปรับปรุงฟังก์ชัน updatePdodStock
+// ปรับปรุงฟังก์ชัน updatePdodStock
+async function updatePdodStock() {
+    const updateQuery = `
+        UPDATE productionorderdetail
+        SET pdod_stock = CASE
+            WHEN status IN (3, 4) THEN GREATEST(0, qty - COALESCE(broken, 0) + COALESCE(\`over\`, 0))
+            ELSE 0
+        END
+    `;
+    
+    await connection.promise().query(updateQuery);
+}
+
+// router.patch ยังคงเหมือนเดิม
+router.patch('/updatestatusdetail', async (req, res, next) => {
+    const { pdod_ids: pdodDetails, pdo_id, pdo_status } = req.body;
 
     if (!pdodDetails || pdodDetails.length === 0) {
         return res.status(400).json({ message: "No pdod_id provided" });
     }
 
-    let completedQueries = 0;
-    let hasErrorOccurred = false;
-
-    pdodDetails.forEach(pdodDetail => {
-        const { pdod_id, broken, over } = pdodDetail;
-
-        updateProductionOrderDetail(pdod_id, broken, over, (error) => {
-            if (error) {
-                console.error("Error updating productionorderdetail:", error);
-                if (!hasErrorOccurred) {
-                    hasErrorOccurred = true;
-                    return res.status(500).json(error);
-                }
-            } else {
-                completedQueries++;
-                if (completedQueries === pdodDetails.length && !hasErrorOccurred) {
-                    Status35(pdo_id, pdo_status);
-                    console.log("pdo_id", pdo_id);
-                    return res.status(200).json({ message: "Update success" });
-                }
-            }
-        });
-    });
-});
-
-function updateProductionOrderDetail(pdod_id, broken, over, callback) {
-    connection.beginTransaction(err => {
-        if (err) return callback(err);
-
-        const updateQuery = `
-            UPDATE productionorderdetail 
-            SET status = 3, broken = ?, \`over\` = ?,
-                pdod_stock = (
-                    SELECT temp.new_stock
-                    FROM (
-                        SELECT 
-                            COALESCE(MAX(pod2.pdod_stock), 0) + pod.qty - ? + ?
-                            AS new_stock
-                        FROM productionorderdetail pod
-                        LEFT JOIN productionorderdetail pod2 ON pod2.pd_id = pod.pd_id
-                            AND pod2.pdod_id < pod.pdod_id
-                        WHERE pod.pdod_id = ?
-                    ) AS temp
-                )
-            WHERE pdod_id = ?`;
-
-        connection.query(updateQuery, [broken, over, broken, over, pdod_id, pdod_id], (updateErr, updateResults) => {
-            if (updateErr) {
-                return connection.rollback(() => callback(updateErr));
-            }
-
-            // อัปเดต pdod_stock สำหรับแถวที่มี pdod_id มากกว่า
-            const updateSubsequentQuery = `
-                UPDATE productionorderdetail pod1
-                JOIN (
-                    SELECT pdod_id, 
-                           @running_total := @running_total + qty - COALESCE(broken, 0) + COALESCE(\`over\`, 0) AS new_stock
-                    FROM (
-                        SELECT pdod_id, qty, broken, \`over\`
-                        FROM productionorderdetail
-                        WHERE pd_id = (SELECT pd_id FROM productionorderdetail WHERE pdod_id = ?)
-                          AND pdod_id >= ?
-                        ORDER BY pdod_id
-                    ) AS sorted_pod
-                    CROSS JOIN (SELECT @running_total := (
-                        SELECT COALESCE(pdod_stock, 0)
-                        FROM productionorderdetail
-                        WHERE pdod_id = ?
-                    )) AS init
-                ) AS pod2 ON pod1.pdod_id = pod2.pdod_id
-                SET pod1.pdod_stock = pod2.new_stock
-                WHERE pod1.pdod_id > ?`;
-
-            connection.query(updateSubsequentQuery, [pdod_id, pdod_id, pdod_id, pdod_id], (subErr, subResults) => {
-                if (subErr) {
-                    return connection.rollback(() => callback(subErr));
-                }
-
-                connection.commit(commitErr => {
-                    if (commitErr) {
-                        return connection.rollback(() => callback(commitErr));
-                    }
-                    callback(null);
-                });
-            });
-        });
-    });
-}
-
-const Status35 = async (pdo_id, newStatus) => {
-    console.log("Checking and updating status for pdo_id:", pdo_id);
     try {
-        // Query to get the status of the production order and its details
-        const query = `
-            SELECT 
-                pdo.pdo_status as pdo_status,
-                pdod.status as pdode_status
-            FROM 
-                productionorder as pdo
-            LEFT JOIN 
-                productionorderdetail AS pdod ON pdod.pdo_id = pdo.pdo_id
-            WHERE  
-                pdo.pdo_id = ?
-        `;
-
-        // Fetch the results
-        const [results] = await connection.promise().query(query, [pdo_id]);
-
-        // Extract statuses from the results
-        const statuses = results.map(item => item.pdode_status);
-        console.log("statuses", statuses);
-
-        // Check if all statuses are 3
-        const allStatusesAreThree = statuses.every(status => status === 3 || status === '3');
-        console.log("allStatusesAreThree", allStatusesAreThree);
-
-        if (allStatusesAreThree) {
-            // Update the status in productionOrder if all details have status 3
-            const updateQuery = "UPDATE productionorder SET pdo_status = ? WHERE pdo_id = ?";
-            await connection.promise().query(updateQuery, [newStatus, pdo_id]);
-            console.log(`Updated status to ${newStatus} for pdo_id: ${pdo_id}`);
-        } else {
-            // Log the current statuses if not all are 3
-            console.log(`Statuses for pdo_id ${pdo_id}:`, statuses);
+        for (const pdodDetail of pdodDetails) {
+            const { pdod_id, broken, over } = pdodDetail;
+            await updateProductionOrderDetail(pdod_id, broken, over);
         }
 
+        // คำนวณ pdod_stock ใหม่สำหรับทุกแถว รับประกันว่าไม่ติดลบ
+        await updatePdodStock();
+
+        await Status35(pdo_id, pdo_status);
+        console.log("Updated pdo_id:", pdo_id);
+        return res.status(200).json({ message: "Update successful" });
     } catch (error) {
-        console.error('MySQL Error:', error);
+        console.error("Error updating production order details:", error);
+        return res.status(500).json({ message: "Update failed", error: error.message });
     }
-};
+});
+
+async function updateProductionOrderDetail(pdod_id, broken, over) {
+    const updateQuery = `
+        UPDATE productionorderdetail 
+        SET status = 3, broken = ?, \`over\` = ? 
+        WHERE pdod_id = ?`;
+
+    await connection.promise().query(updateQuery, [broken, over, pdod_id]);
+}
+
+async function Status35(pdo_id, pdo_status) {
+    const updateQuery = "UPDATE productionorder SET pdo_status = ? WHERE pdo_id = ?";
+    await connection.promise().query(updateQuery, [pdo_status, pdo_id]);
+}
 
 
 // const Status3 = async (pdo_id) => {

@@ -4,6 +4,7 @@ const router = express.Router();
 const puppeteer = require('puppeteer'); // นำเข้า Puppeteer
 const fs = require('fs');
 const path = require('path');
+const ejs = require('ejs');
 
 
 // เปลี่ยนราคา
@@ -135,11 +136,9 @@ router.get('/sm/:sm_id', (req, res, next) => {
 
 
 // puppeteer ยังบ่แล้ว เทส
+// Generate the PDF and save it with a dynamic name
 router.post('/generate-pdf', async (req, res, next) => {
-    // const { orderData } = req.body; // รับข้อมูลจาก body ของคำขอ
-
     try {
-        // const browser = await puppeteer.launch({ headless: true });
         const browser = await puppeteer.launch({
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -148,50 +147,46 @@ router.post('/generate-pdf', async (req, res, next) => {
         const page = await browser.newPage();
         const orderData = req.body;
 
-        // สร้างเนื้อหา HTML ตาม orderData
-        const pdfContent = `
-        <html>
-            <head>
-                <title>Order Summary</title>
-            </head>
-            <body>
-                <h1>Order Summary</h1>
-                <p>Date: ${orderData.od_date}</p>
-                <p>Total: ${orderData.od_sumdetail}</p>
-                <p>Payment Type: ${orderData.od_paytype}</p>
-                <p>Change: ${orderData.od_change}</p>
-            </body>
-        </html>
-    `;
-        await page.setContent(pdfContent);
-        // const pdf = await page.pdf({
-        //     path: 'document.pdf',
+        const htmlTemplate = fs.readFileSync(path.join(__dirname, '../public/generate.html'), 'utf8');
+        const html = ejs.render(htmlTemplate, orderData);
 
-        //     format: 'A4',
-        //     printBackground: true,
-        //     margin: { top: '20px', bottom: '20px', left: '10px', right: '10px' } // ลองเพิ่มขอบ
-        // });
-
-        const pdf = await page.pdf({
+        await page.setContent(html);
+        const pdfBuffer = await page.pdf({
             format: 'A4',
             printBackground: true,
             margin: { top: '20px', bottom: '20px', left: '10px', right: '10px' }
         });
         await browser.close();
 
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'inline; filename="document.pdf"');
+        // Generate a unique filename for the PDF
+        const uniqueFileName = `document-${Date.now()}.pdf`;
+        const filePath = path.join(__dirname, '../public', uniqueFileName);
+        fs.writeFileSync(filePath, pdfBuffer);
+        console.log('PDF file saved successfully at:', filePath);
 
-        res.send(pdf);
-        console.log("ตรวจสอบ", pdf); // ตรวจสอบข้อมูล PDF ที่สร้างขึ้น
-
+        // Redirect to PDF viewer route with the unique filename
+        res.redirect(`/pdf-viewer?filename=${uniqueFileName}`);
     } catch (error) {
-        console.error('Detailed error:', error);
+        console.error('Error generating PDF:', error);
         return res.status(500).json({
             message: 'Error generating PDF',
             error: error.message,
             stack: error.stack
         });
+    }
+});
+
+// Serve the generated PDF
+router.get('/pdf-viewer', (req, res) => {
+    const { filename } = req.query;
+    const filePath = path.join(__dirname, '../public', filename); // Adjust path as needed
+
+    if (fs.existsSync(filePath)) {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+        res.sendFile(filePath);
+    } else {
+        res.status(404).json({ error: 'PDF file not found' });
     }
 });
 
@@ -264,128 +259,116 @@ router.post('/generate-pdf', async (req, res, next) => {
 
 
 // เทสหักสต้อก คือต้องทำใหม่
-router.post('/order', async (req, res, next) => {
-    const userId = req.session.st_id; // ดึง user_id จาก session
+router.post('/order', async (req, res) => {
+    const userId = req.session.st_id;
     const {
         od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype,
         od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id,
         selectedItems, freeItems
     } = req.body;
 
-    const values = [
+    const orderValues = [
         od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype,
         od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, userId
     ];
 
-    // แทรกข้อมูลลงในตาราง order
-    const query = `
-        INSERT INTO \`order\`(od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype, 
-        od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, user_id) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-    `;
+    try {
+        // Insert into order table
+        const orderResult = await queryPromise(
+            `INSERT INTO \`order\` (od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype, 
+            od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, user_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            orderValues
+        );
 
-    connection.query(query, values, async (err, results) => {
-        if (!err) {
-            const orderId = results.insertId; // ดึง od_id ที่ถูกแทรก
+        const orderId = orderResult.insertId;
 
-            // เตรียมการแทรกข้อมูลใน orderdetail
-            const detailQuery = `
-                INSERT INTO orderdetail (od_id, sm_id, odde_qty, odde_sum) VALUES ?;
-            `;
+        // Insert into orderdetail table
+        const orderDetailValues = [
+            ...selectedItems.map(item => [orderId, item.sm_id, item.quantity, item.sm_price * item.quantity]),
+            ...freeItems.map(item => [orderId, item.smfree_id, item.quantity, 0])
+        ];
 
-            // Ensure freeItems and selectedItems are arrays
-            const allItems = [...(Array.isArray(selectedItems) ? selectedItems : []), ...(Array.isArray(freeItems) ? freeItems : [])];
-            const detailValues = allItems.map(detail => {
-                const odde_sum = detail.price * detail.quantity;
-                return [
-                    orderId,
-                    detail.sm_id,
-                    detail.quantity,
-                    isNaN(odde_sum) ? 0 : odde_sum // ตรวจสอบ NaN และแทนที่ด้วย 0
-                ];
-            });
+        const orderDetailResult = await queryPromise(
+            `INSERT INTO orderdetail (od_id, sm_id, odde_qty, odde_sum) VALUES ?`,
+            [orderDetailValues]
+        );
 
-            try {
-                const resultsAll = await queryPromise(detailQuery, [detailValues]);
-                let odde_id = resultsAll.insertId; // ดึง odde_id เริ่มต้นของ orderdetail ที่เพิ่งถูกสร้าง
+        let odde_id = orderDetailResult.insertId;
 
-                const processItems = async (items, isFreeItem = false) => {
-                    for (const detail of items) {
-                        const sm_id = detail.sm_id;
+        // Process items (both selected and free)
+        const processItems = async (items, isFreeItems = false) => {
+            for (const item of items) {
+                const sm_id = isFreeItems ? item.smfree_id : item.sm_id;
 
-                        // หา smde_id และ pd_id จากตาราง salesmenudetail
-                        const salesMenuQuery = `SELECT smde_id, pd_id, qty AS sm_qty FROM salesmenudetail WHERE sm_id = ?`;
-                        const salesMenuDetail = await queryPromise(salesMenuQuery, [sm_id]);
+                // Get salesmenu details
+                const salesMenuDetails = await queryPromise(
+                    `SELECT smde_id, pd_id, qty AS sm_qty FROM salesmenudetail WHERE sm_id = ?`,
+                    [sm_id]
+                );
 
-                        if (salesMenuDetail.length > 0) {
-                            const { smde_id, pd_id, sm_qty } = salesMenuDetail[0];
+                if (salesMenuDetails.length === 0) continue;
 
-                            // หา pdod_id และ qty จาก productionorderdetail ที่มี status = 3 หรือ 4 และเรียงลำดับ qty ASC
-                            const productionOrderQuery = `
-                                SELECT pdod_id, qty FROM productionorderdetail 
-                                WHERE pd_id = ? AND status IN (3, 4) 
-                                ORDER BY qty ASC
-                            `;
-                            const productionOrderDetails = await queryPromise(productionOrderQuery, [pd_id]);
+                const { smde_id, pd_id, sm_qty } = salesMenuDetails[0];
+                let remainingQtyToDeduct = item.quantity * sm_qty;
 
-                            let remainingQtyToDeduct = detail.quantity * sm_qty; // นำค่า qty ของ salesmenudetail มาคูณกับจำนวนที่จะหัก
+                // Get available production order details, ordered by pdod_id (FIFO)
+                const productionOrderDetails = await queryPromise(
+                    `SELECT pdod_id, pdod_stock FROM productionorderdetail 
+                    WHERE pd_id = ? AND status IN (3, 4) AND pdod_stock > 0
+                    ORDER BY pdod_id ASC`,
+                    [pd_id]
+                );
 
-                            for (const productionOrderDetail of productionOrderDetails) {
-                                const { pdod_id, qty } = productionOrderDetail;
-                                if (remainingQtyToDeduct <= 0) break; // ถ้าหักครบแล้ว ให้ออกจาก loop
+                for (const pod of productionOrderDetails) {
+                    if (remainingQtyToDeduct <= 0) break;
 
-                                // หาค่าจำนวนที่จะหักในแต่ละรายการ (ต้องไม่เกินจำนวนที่เหลือ)
-                                const deductQty = Math.min(remainingQtyToDeduct, qty);
-                                const newQty = qty - deductQty; // ปรับจำนวนสินค้าคงเหลือ
+                    const deductQty = Math.min(remainingQtyToDeduct, pod.pdod_stock);
+                    const newStock = pod.pdod_stock - deductQty;
 
-                                // อัพเดท qty ใหม่ใน productionorderdetail
-                                const updateProductionOrderQuery = `
-                                    UPDATE productionorderdetail SET pdod_stock = ? WHERE pdod_id = ?;
-                                `;
-                                await queryPromise(updateProductionOrderQuery, [newQty, pdod_id]);
+                    // Update production order detail stock
+                    await queryPromise(
+                        `UPDATE productionorderdetail SET pdod_stock = ? WHERE pdod_id = ?`,
+                        [newStock, pod.pdod_id]
+                    );
 
-                                // แทรกข้อมูลลงใน OrderdetailSalesMenu
-                                const insertSalesMenuQuery = `
-                                    INSERT INTO orderdetailsalesmenu (odde_id, smde_id, pdod_id) 
-                                    VALUES (?, ?, ?);
-                                `;
-                                await queryPromise(insertSalesMenuQuery, [odde_id, smde_id, pdod_id]);
+                    // Insert into orderdetailsalesmenu
+                    await queryPromise(
+                        `INSERT INTO orderdetailsalesmenu (odde_id, smde_id, pdod_id, qty) 
+                        VALUES (?, ?, ?, ?)`,
+                        [odde_id, smde_id, pod.pdod_id, deductQty]
+                    );
 
-                                // แทรก pdod_id และ odde_id เข้าไปใน promotionorderdetail
-                                const insertPromotionOrderDetailQuery = `
-                                    INSERT INTO promotionorderdetail (pdod_id, odde_id) 
-                                    VALUES (?, ?);
-                                `;
-                                await queryPromise(insertPromotionOrderDetailQuery, [pdod_id, odde_id]);
+                    // Insert into promotionorderdetail (only for non-free items)
+                    await queryPromise(
+                        `INSERT INTO promotionorderdetail (pdod_id, odde_id, qty) 
+                            VALUES (?, ?, ?)`,
+                        [pod.pdod_id, odde_id, deductQty]
+                    );
 
-                                // ปรับจำนวนที่เหลือที่ต้องหัก
-                                remainingQtyToDeduct -= deductQty;
-                            }
 
-                            if (remainingQtyToDeduct > 0) {
-                                throw new Error(`Insufficient quantity to fulfill the order for pd_id: ${pd_id}`);
-                            }
-                        }
-                        odde_id++; // เพิ่ม odde_id สำหรับรายการถัดไป
-                    }
-                };
+                    remainingQtyToDeduct -= deductQty;
+                }
 
-                // ประมวลผลสินค้าปกติ
-                await processItems(selectedItems);
-                // ประมวลผลสินค้าฟรี
-                await processItems(freeItems, true);
+                if (remainingQtyToDeduct > 0) {
+                    throw new Error(`Insufficient stock for product ID: ${pd_id}`);
+                }
 
-                res.status(200).json({ message: "success" });
-            } catch (error) {
-                console.error("Error processing order:", error);
-                res.status(500).json({ message: "Error processing order", error });
+                odde_id++;
             }
-        } else {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "Error inserting order", error: err });
-        }
-    });
+        };
+
+        // Process selected items and free items
+        await processItems(selectedItems);
+        await processItems(freeItems, true);
+
+        res.status(200).json({ message: "Order processed successfully", orderId });
+    } catch (error) {
+        console.error("Error processing order:", error);
+        res.status(500).json({ message: "Error processing order", error: error.message });
+    }
 });
+
 
 // ฟังก์ชันเพื่อแปลงการ query แบบ callback เป็น promise
 const queryPromise = (query, params) => {

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        /* CSS สำหรับการจัดรูปแบบใบเสร็จ */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .receipt {
+            max-width: 600px;
+            margin: 0 auto;
+            border: 1px solid #ccc;
+            padding: 20px;
+        }
+
+        .receipt h1 {
+            text-align: center;
+        }
+
+        .receipt p {
+            margin: 10px 0;
+        }
+
+        .receipt table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .receipt th,
+        .receipt td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .receipt tfoot tr:last-child td {
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="receipt">
+        <h1>Receipt</h1>
+        <p>Date: {{ od_date }}</p>
+        <p>Order Number: {{ od_id }}</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ od_name }}</td>
+                    <td>{{ od_qty }}</td>
+                    <td>{{ od_price }}</td>
+                    <td>{{ od_sumdetail }}</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3">Total:</td>
+                    <td>{{ od_sumdetail }}</td>
+                </tr>
+                <tr>
+                    <td colspan="3">Payment Type:</td>
+                    <td>{{ od_paytype }}</td>
+                </tr>
+                <tr>
+                    <td colspan="3">Change:</td>
+                    <td>{{ od_change }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</body>
+
+</html>

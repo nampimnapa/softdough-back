@@ -36,9 +36,17 @@ module.exports = {
                 type: Sequelize.INTEGER,
                 allowNull: true
             },
-            qtyday:{
-                type: Sequelize.INTEGER,
+            dateexp:{
+                type: Sequelize.DATE,
                 allowNull: true
+            },
+            pdod_id:{
+                type: Sequelize.INTEGER,
+                allowNull: true,
+                references: {
+                    model: 'productionOrderdetail',
+                    key: 'pdod_id'
+                }  
             },
             indlde_id :{
                 type: Sequelize.INTEGER,

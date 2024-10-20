@@ -2302,7 +2302,7 @@ router.get('/addUseIngrediantLotpro/:pdo_id', (req, res, next) => {
             rows.forEach(row => {
                 const Qx = row.ingredients_qty;
                 //+-เกินเสีย
-                const N = (row.qty+row.over)-row.broken;
+                const N = (row.qty + row.over) - row.broken;
                 const M = row.produced_qty;
                 const qty_per_unit = row.qty_per_unit;
 
@@ -2313,10 +2313,10 @@ router.get('/addUseIngrediantLotpro/:pdo_id', (req, res, next) => {
 
                 finalResults.push({
                     pd_name: row.pd_name,
-                    qtypd_name:row.qty,
-                    qtybroken:row.broken,
-                    qtyover:row.over,
-                    resultqty:N,
+                    qtypd_name: row.qty,
+                    qtybroken: row.broken,
+                    qtyover: row.over,
+                    resultqty: N,
                     pdod_id: parseInt(pdod_id, 10),
                     ind_name: row.ind_name,
                     ind_id: row.ind_id,
@@ -3861,8 +3861,8 @@ router.get('/ingredientlot/search', (req, res) => {
 
 //ขั้นต่ำ
 router.get('/ingredientmini', async (req, res) => {
-    const sql = 
-      `SELECT * FROM (
+    const sql =
+        `SELECT * FROM (
         -- First Query for ingredient_used_pro
         SELECT 
             indp.indup_id AS id,  -- Select specific columns instead of indp.*
@@ -3915,83 +3915,104 @@ router.get('/ingredientmini', async (req, res) => {
     ORDER BY created_at DESC;
     
     `;
-    
-    try {
-      // Execute the query using a connection
-      connection.query(sql, [], (err, result) => {
-        if (err) {
-          console.error('Error executing query:', err);
-          res.status(500).send('Internal server error');
-          return;
-        }
-  
-        // Group the data by ind_name and calculate sumday and sumuse
-        const groupedData = result.reduce((acc, item) => {
-            const indName = item.ind_name;
-            const qty_per_unit = item.qty_per_unit;
-            const indId = item.ind_id;
 
-          
-            // Check if ind_name already exists in the accumulator
-            const existingGroup = acc.find(group => group.ind_name === indName);
-          
-            if (existingGroup) {
-              // If ind_name exists, push the item to the detail array
-              existingGroup.detail.push(item);
-              existingGroup.sumuse += item.qtyusesum;  // Add to sumuse
-              
-              // Check if the created_at date is unique before adding to sumday
-              if (!existingGroup.uniqueDates.has(item.created_at)) {
-                existingGroup.uniqueDates.add(item.created_at);
-                existingGroup.sumday += 1;  // Increment sumday
-              }
-            } else {
-              // If ind_name doesn't exist, create a new group
-              const uniqueDates = new Set([item.created_at]);  // Track unique dates
-              acc.push({
-                indId:indId,
-                ind_name: indName,
-                qty_per_unit:qty_per_unit,
-                sumuse: item.qtyusesum,  // Initialize sumuse
-                sumday: 1,  // Initialize sumday (first date)
-                detail: [item],
-                uniqueDates: uniqueDates  // Track unique dates
-              });
+    try {
+        // Execute the query using a connection
+        connection.query(sql, [], (err, result) => {
+            if (err) {
+                console.error('Error executing query:', err);
+                res.status(500).send('Internal server error');
+                return;
             }
-          
-            return acc;
-          }, []).map(group => {
-            // Calculate the average (sumuse / sumday)
-            const average = group.sumuse / group.sumday;
-            const SafetyStock = average *1;
-            const MinimumStock = average+SafetyStock;
-            const qtyperunit = group.qty_per_unit;  
-            const MinimumqtyStock = Math.ceil(MinimumStock / qtyperunit);
-            const devind = Math.floor(MinimumStock / qtyperunit);
-            const mod = MinimumStock % qtyperunit
+
+            // Group the data by ind_name and calculate sumday and sumuse
+            const groupedData = result.reduce((acc, item) => {
+                const indName = item.ind_name;
+                const qty_per_unit = item.qty_per_unit;
+                const indId = item.ind_id;
+                const qtyusesum = item.qtyusesum;
+
+                console.log(acc, "acc")
+                // Check if ind_name already exists in the accumulator
+                const existingGroup = acc.find(group => group.ind_name === indName);
+
+                if (existingGroup) {
+                    // If ind_name exists, push the item to the detail array
+                    existingGroup.detail.push(item);
+                    existingGroup.sumuse += item.qtyusesum;  // Add to sumuse
+
+                    // Create or update a map that sums qtyusesum per day
+                    if (existingGroup.dailyTotals[item.created_at]) {
+                        existingGroup.dailyTotals[item.created_at] += qtyusesum; // Add to existing date
+                    } else {
+                        existingGroup.dailyTotals[item.created_at] = qtyusesum; // New date entry
+                    }
+
+                    // Update sumday only if the date is unique
+                    if (!existingGroup.uniqueDates.has(item.created_at)) {
+                        existingGroup.uniqueDates.add(item.created_at);
+                        existingGroup.sumday += 1;
+                    }
+                } else {
+                    // If ind_name doesn't exist, create a new group
+                    const uniqueDates = new Set([item.created_at]);  // Track unique dates
+                    acc.push({
+                        indId: indId,
+                        ind_name: indName,
+                        qty_per_unit: qty_per_unit,
+                        sumuse: item.qtyusesum,  // Initialize sumuse
+                        sumday: 1,  // Initialize sumday (first date)
+                        detail: [item],
+                        uniqueDates: uniqueDates, // Track unique dates
+                        dailyTotals: { [item.created_at]: qtyusesum } // Initialize dailyTotals map
+
+                    });
+                }
+
+                return acc;
+            }, []).map(group => {
+                // Calculate the average (sumuse / sumday)
+                // Calculate the maximum quantity sold on any single day
+                const dailyTotalsArray = Object.values(group.dailyTotals); // Get the daily totals as an array
+                console.log(dailyTotalsArray, 'dailyTotals')
+                
+                //จำนวนวัตถุดิบวันที่ขายดีที่สุด  เวลาในการรอสินค้ามากที่สุด
+                const maxQty = Math.max(...dailyTotalsArray); // Find the max of daily totals
+                //จำนวนวัตถุดิบที่ใช้เฉลี่ยต่อวัน
+                const average = group.sumuse / group.sumday;
+
+                // const SafetyStock = average *1;
             
-            // Remove the uniqueDates set before sending response
-            delete group.uniqueDates.qty_per_unit
-            
-            // Add the calculated average to the group object
-            return {
-              ...group,
-              average: average ,
-              SafetyStock :SafetyStock,
-              MinimumStock:MinimumStock,
-              MinimumqtyStock: MinimumqtyStock,
-              devind: devind,  // Calculate the deviation in index
-              mod:mod  
-            };
-          });          
-  
-        // Return the grouped result as JSON
-        res.json(groupedData);
-      });
+                const SafetyStock = (maxQty * 2) - (average * 1);
+                
+                const MinimumStock = (average* 1) + SafetyStock;
+                const qtyperunit = group.qty_per_unit;
+                const MinimumqtyStock = Math.ceil(MinimumStock / qtyperunit);
+                const devind = Math.floor(MinimumStock / qtyperunit);
+                const mod = MinimumStock % qtyperunit
+
+                delete group.uniqueDates.qty_per_unit
+
+                // Add the calculated average to the group object
+                return {
+                    ...group,
+                    maxQty:maxQty,
+                    average: average,
+                    SafetyStock: SafetyStock,
+                    MinimumStock: MinimumStock,
+                    MinimumqtyStock: MinimumqtyStock,
+                    devind: devind,  // Calculate the deviation in index
+                    mod: mod
+                };
+            });
+
+            // Return the grouped result as JSON
+            res.json(groupedData);
+        });
     } catch (error) {
-      // Catch any other errors and respond with an error message
-      console.error('Error:', error);
-      res.status(500).send('Internal server error');
+        // Catch any other errors and respond with an error message
+        console.error('Error:', error);
+        res.status(500).send('Internal server error');
     }
 });
 

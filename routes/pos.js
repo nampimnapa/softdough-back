@@ -5,7 +5,7 @@ const puppeteer = require('puppeteer'); // นำเข้า Puppeteer
 const fs = require('fs');
 const path = require('path');
 const ejs = require('ejs');
-
+const moment = require('moment');
 
 // เปลี่ยนราคา
 router.get('/small/:delitype?', async (req, res, next) => {
@@ -420,41 +420,62 @@ async function countCurrentStock() {
     }
 }
 
-// ฟังก์ชันสำหรับนับจำนวนสต็อคปัจจุบันและดึงชื่อสินค้า
-async function countCurrentStockWithNames() {
+async function countCurrentStockWithNamesAndExpiry() {
     try {
         const stockResult = await queryPromise(`
-            SELECT p.pd_id, p.pd_name, SUM(pod.pdod_stock) as total_stock
+            SELECT 
+                p.pd_id, 
+                p.pd_name, 
+                pod.pdod_id,
+                pod.pdod_stock,
+                DATE(pod.created_at) AS created_date,  -- แสดงเฉพาะวันที่ ไม่มีเวลา
+                r.qtylifetime,
+                DATE(DATE_ADD(pod.created_at, INTERVAL r.qtylifetime DAY)) AS exp_date  -- แสดงเฉพาะวันที่ ไม่มีเวลา
             FROM productionorderdetail pod
             JOIN products p ON pod.pd_id = p.pd_id
-            WHERE pod.status IN (3, 4)
-            GROUP BY p.pd_id, p.pd_name
+            JOIN recipe r ON p.pd_id = r.pd_id
+            WHERE pod.status IN (3, 4) 
+            AND pod.pdod_stock > 0 
+            AND DATE(DATE_ADD(pod.created_at, INTERVAL r.qtylifetime DAY)) >= CURDATE()  -- เงื่อนไขใหม่: exp_date ต้องไม่เลยวันนี้
+            ORDER BY p.pd_id, pod.created_at
         `);
-        return stockResult.reduce((acc, item) => {
-            acc[item.pd_id] = {
-                pd_name: item.pd_name,
-                total_stock: item.total_stock
-            };
+
+        const result = stockResult.reduce((acc, item) => {
+            if (!acc[item.pd_id]) {
+                acc[item.pd_id] = {
+                    pd_id: item.pd_id,
+                    pd_name: item.pd_name,
+                    total_stock: 0,
+                    detailstock: []
+                };
+            }
+            acc[item.pd_id].total_stock += item.pdod_stock;
+            acc[item.pd_id].detailstock.push({
+                pdod_id: item.pdod_id,
+                pdod_stock: item.pdod_stock,
+                created_date: item.created_date,  // เฉพาะวันที่
+                exp_date: item.exp_date  // เฉพาะวันที่
+            });
             return acc;
         }, {});
+
+        return Object.values(result);
     } catch (error) {
-        console.error("เกิดข้อผิดพลาดในการนับสต็อคและดึงชื่อสินค้า:", error);
+        console.error("เกิดข้อผิดพลาดในการนับสต็อค ดึงชื่อสินค้า และคำนวณวันหมดอายุ:", error);
         throw error;
     }
 }
 
-// API เส้นใหม่สำหรับส่งข้อมูลสต็อคปัจจุบันพร้อมชื่อสินค้า
+
+// API ข้อมูลสต็อคปัจจุบัน ชื่อสินค้า และวันหมดอายุ
 router.get('/countstock', async (req, res) => {
     try {
-        const currentStockWithNames = await countCurrentStockWithNames();
-        res.status(200).json(currentStockWithNames);
+        const currentStockWithNamesAndExpiry = await countCurrentStockWithNamesAndExpiry();
+        res.status(200).json(currentStockWithNamesAndExpiry);
     } catch (error) {
-        res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูลสต็อคและชื่อสินค้า", error: error.message });
+        res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูลสต็อค ชื่อสินค้า และวันหมดอายุ", error: error.message });
     }
 });
-
-
-
 
 
 

@@ -12,5 +12,5 @@ services:
       - DATABASE_PORT=3306
       - DATABASE_USER=root
       - DATABASE_PASSWORD=softdough@db
-      - DATABASE_NAME=softdough_sep
+      - DATABASE_NAME=softdoughdb
       - FRONT=https://softdough.co

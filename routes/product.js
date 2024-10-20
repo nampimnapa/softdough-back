@@ -1205,7 +1205,46 @@ router.get('/ingredient/search', (req, res) => {
     });
   });
 
-
+  
+// คำนวณหาสต็อกวัตถุดิบขั้นต่ำ
+//เอา sql มาแปะไว้ก่อน
+router.get('/productmini', async (req, res) => {
+    const sql = `  SELECT 
+                      p.pd_name, 
+                      odsm.qty AS order_qty,
+                      pod.qty AS promo_qty, -- สมมติว่าตาราง promotionOrderDetail มีคอลัมน์ปริมาณ (ปรับตามความเหมาะสม)
+                      o.od_date
+                  FROM 
+                      orderdetailSalesMenu odsm
+                  JOIN 
+                      orderdetail od ON odsm.odde_id = od.odde_id
+                  JOIN 
+                      "order" o ON od.od_id = o.od_id
+                  JOIN 
+                      products p ON p.pd_id = odsm.pdod_id -- สมมติว่า pdod_id ใน orderdetailSalesMenu เชื่อมโยงกับ pd_id ใน product
+                  LEFT JOIN 
+                      promotionOrderDetail pod ON pod.pdod_id = odsm.pdod_id -- เชื่อมโยง promotionOrderDetail เพื่อดึงข้อมูลโปรโมชั่น
+                  WHERE 
+                      o.od_date >= CURDATE() - INTERVAL 14 DAY;
+  `;
+    
+    try {
+      // Use parameterized queries to prevent SQL injection
+      connection.query(sql, [], (err, result) => {
+        if (err) {
+          console.error('Error executing query:', err);
+          res.status(500).send('Internal server error');
+          return;
+        }
+        res.json(result);
+      });
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(500).send('Internal server error');
+    }
+  });
+  
+  
 
 
 

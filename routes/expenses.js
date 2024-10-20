@@ -263,34 +263,34 @@ router.patch('/deleted/:id', (req, res, next) => {
 // });
 
 // ลองเดือน
-router.get('/readalldash', (req, res, next) => {
-    const { month } = req.query; // รับค่า month จาก query string
-    const [year, monthNumber] = month.split('-');
+// router.get('/readalldash', (req, res, next) => {
+//     const { month } = req.query; // รับค่า month จาก query string
+//     const [year, monthNumber] = month.split('-');
 
-    var query = `
-    SELECT 
-        ept.ept_name,
-        SUM(ep.ep_sum) AS total_sum
-    FROM 
-        expenses AS ep
-    JOIN 
-        expensestype AS ept ON ept.ept_id = ep.ept_id 
-    WHERE 
-        ep.deleted_at IS NULL 
-        AND ep.ep_status = 2 
-        AND YEAR(ep.ep_date) = ? 
-        AND MONTH(ep.ep_date) = ?
-    GROUP BY 
-        ept.ept_name;
-    `;
+//     var query = `
+//     SELECT 
+//         ept.ept_name,
+//         SUM(ep.ep_sum) AS total_sum
+//     FROM 
+//         expenses AS ep
+//     JOIN 
+//         expensestype AS ept ON ept.ept_id = ep.ept_id 
+//     WHERE 
+//         ep.deleted_at IS NULL 
+//         AND ep.ep_status = 2 
+//         AND YEAR(ep.ep_date) = ? 
+//         AND MONTH(ep.ep_date) = ?
+//     GROUP BY 
+//         ept.ept_name;
+//     `;
 
-    connection.query(query, [year, monthNumber], (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(500).json(err);
-        }
-    });
-});
+//     connection.query(query, [year, monthNumber], (err, results) => {
+//         if (!err) {
+//             return res.status(200).json(results);
+//         } else {
+//             return res.status(500).json(err);
+//         }
+//     });
+// });
 
 module.exports = router;

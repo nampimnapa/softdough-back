@@ -138,18 +138,18 @@ router.get('/sm/:sm_id', (req, res, next) => {
 
 // puppeteer ยังบ่แล้ว เทส
 // Generate the PDF and save it with a dynamic name
-router.post('/generate-pdf', async (req, res, next) => {
+router.post('/generate-pdf', async (req, res) => {
     try {
         const browser = await puppeteer.launch({
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null
         });
         const page = await browser.newPage();
-        const orderData = req.body;
+        const orderData = req.body; // รับข้อมูล order ที่เพิ่งสร้าง
 
+        // ใช้ template HTML เพื่อแสดงข้อมูล
         const htmlTemplate = fs.readFileSync(path.join(__dirname, '../public/generate.html'), 'utf8');
-        const html = ejs.render(htmlTemplate, orderData);
+        const html = ejs.render(htmlTemplate, orderData); // สร้าง HTML จากข้อมูล orderData
 
         await page.setContent(html);
         const pdfBuffer = await page.pdf({
@@ -159,37 +159,52 @@ router.post('/generate-pdf', async (req, res, next) => {
         });
         await browser.close();
 
-        // Generate a unique filename for the PDF
-        const uniqueFileName = `document-${Date.now()}.pdf`;
-        const filePath = path.join(__dirname, '../public', uniqueFileName);
+        // สร้างชื่อไฟล์ unique สำหรับไฟล์ PDF
+        const uniqueFileName = `order-${Date.now()}.pdf`;
+        const filePath = path.join(__dirname, '../', uniqueFileName);
         fs.writeFileSync(filePath, pdfBuffer);
-        console.log('PDF file saved successfully at:', filePath);
 
-        // Redirect to PDF viewer route with the unique filename
-        res.redirect(`/pdf-viewer?filename=${uniqueFileName}`);
+        // ส่ง URL ไปยัง pdf-viewer route เพื่อแสดงไฟล์
+        res.json({ filename: uniqueFileName }); // ส่งชื่อไฟล์กลับไปให้ frontend
     } catch (error) {
         console.error('Error generating PDF:', error);
-        return res.status(500).json({
-            message: 'Error generating PDF',
-            error: error.message,
-            stack: error.stack
-        });
+        res.status(500).json({ message: 'Error generating PDF' });
     }
 });
 
+
+
+
 // Serve the generated PDF
 router.get('/pdf-viewer', (req, res) => {
-    const { filename } = req.query;
-    const filePath = path.join(__dirname, '../public', filename); // Adjust path as needed
+    const filePath = path.join(__dirname, '../document1.pdf'); // File outside 'public'
+    console.log('Resolved file path:', filePath);
 
+    // Check if the file exists
     if (fs.existsSync(filePath)) {
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+        res.setHeader('Content-Disposition', 'inline; filename="document1.pdf"');
         res.sendFile(filePath);
     } else {
         res.status(404).json({ error: 'PDF file not found' });
     }
 });
+// Serve the generated PDF
+// router.get('/pdf-viewer', (req, res) => {
+//     const filename = req.query.filename;
+//     const filePath = path.join(__dirname, '../', filename); // ดึงไฟล์ที่อยู่ในโฟลเดอร์ pdfs
+
+//     // Check if the file exists
+//     if (fs.existsSync(filePath)) {
+//         res.setHeader('Content-Type', 'application/pdf');
+//         res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+//         res.sendFile(filePath);
+//     } else {
+//         res.status(404).json({ error: 'PDF file not found' });
+//     }
+// });
+
+
 
 // Save order
 // router.post('/order', async (req, res, next) => {

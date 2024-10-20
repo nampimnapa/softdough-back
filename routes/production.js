@@ -1,52 +1,115 @@
-// const express = require("express");
-// const connection = require("../connection");
-// const router = express.Router();
-// const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder } = require('../middleware')
+const express = require("express");
+const connection = require("../connection");
+const router = express.Router();
+const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder } = require('../middleware')
+
+router.post('/adddis', (req, res, next) => {
+    let Data = req.body;
+    console.log('Body:', req.body); // Check request body
+
+    const query = `
+        INSERT INTO discount (dc_name, dc_detail, dc_diccountprice, datestart, dateend,minimum,deleted_at)
+        VALUES (?, ?, ?, ?, ?,?,?);
+    `;
+    const values = [
+        Data.dc_name,
+        Data.dc_detail,
+        Data.dc_diccountprice,
+        Data.datestart,
+        Data.dateend,
+        Data.minimum,
+        null
+    ];
+
+    connection.query(query, values, (err, results) => {
+        if (!err) {
+            return res.status(200).json({ message: "success" });
+        } else {
+            console.error("MySQL Error:", err);
+            return res.status(500).json({ message: "error", error: err });
+        }
+    });
+});
+
+router.get('/readdis', (req, res, next) => {
+    var query = 'select *,DATE_FORMAT(discount.datestart, "%d-%m-%Y") AS datestart,DATE_FORMAT(discount.dateend, "%d-%m-%Y") AS dateend from discount'
+    connection.query(query, (err, results) => {
+        if (!err) {
+            return res.status(200).json(results);
+        } else {
+            return res.status(500).json(err);
+        }
+    });
+})
+
+router.get('/readdis/:id', (req, res, next) => {
+    const id = req.params.id;
+    var query = `SELECT discount.*, 
+    DATE_FORMAT(datestart, '%Y-%m-%d') AS datestart,
+    DATE_FORMAT(dateend, '%Y-%m-%d') AS dateend
+     FROM discount WHERE dc_id = ?`;
+
+    connection.query(query, [id], (err, results) => {
+        if (!err) {
+            if (results.length > 0) {
+                return res.status(200).json(results[0]);
+            } else {
+                return res.status(404).json({ message: "Staff not found" });
+            }
+        } else {
+            return res.status(500).json(err);
+        }
+    });
+});
 
 
-// //ส่วน select ประเภทเมนู แล้วต้องไปแสดง pd ที่เป็นประเภทเมนูนี้ในอีก select
-// router.get('/selectpdt/:pdc_id', (req, res, next) => {
-//     const pdc_id = Number(req.params.pdc_id);
+router.patch('/update/:id', (req, res, next) => {
+    const dc_id = req.params.id;
+    const discount = req.body;
 
-//     var query = `SELECT pd.pd_name, pdc.*
-//     FROM productCategory pdc 
-//     JOIN products pd ON pdc.pdc_id = pd.pdc_id 
-//     WHERE pdc.pdc_id = ?`
-//     connection.query(query, pdc_id, (err, results) => {
-//         if (!err) {
-//             return res.status(200).json(results);
-//         } else {
-//             return res.status(500).json(err);
-//         }
-//     });
-// })
 
-// //ยังไม่เพิ่มส่วน คำนวณต้นทุน
-// //
-// router.post('/addProductionOrder', (req, res, next) => {
+    var query = "UPDATE discount SET dc_name=?, dc_detail=?, dc_diccountprice=?, datestart=?, dateend=? ,minimum=? ,updated_at=CURRENT_TIMESTAMP() WHERE dc_id=?";
+    connection.query(query, [discount.dc_name, discount.dc_detail, discount.dc_diccountprice, discount.datestart, discount.dateend, discount.minimum, dc_id], (err, results) => {
+        if (!err) {
+            if (results.affectedRows === 0) {
+                console.error(err);
+                return res.status(404).json({ message: "id does not found" });
+            }
+            return res.status(200).json({ message: "update success" });
+        } else {
+            return res.status(500).json(err);
+        }
+    });
+
+});
+
+
+
+//addpro free
+//   router.post('/addfree', (req, res, next) => {
 //     // const ingredient_lot = req.body;
 //     // const ingredient_lot_detail = req.body;
-//     const productionOrder = req.body.productionOrder[0]; // Access the first item in the productionOrder array
-//     const productionOrderdetail = req.body.productionOrderdetail;
+//     // const promotion = req.body.promotion[0]; // Access the first item in the productionOrder array
+//     const { pm_name, pm_datestart, pm_dateend, promotiondetail } = req.body;
+//     // const promotiondetail = req.body.promotiondetail;
 
 
-//     const query = "INSERT INTO productionOrder (cost_pricesum	,pdo_status) VALUES (null,?)";
+//     const query = "INSERT INTO promotion (pm_name ,pm_datestart,pm_dateend,deleted_at) VALUES (?,?,?,null)";
 
-//     connection.query(query, [productionOrder.pdo_status], (err, results) => {
+//     connection.query(query, [pm_name,pm_datestart,pm_dateend], (err, results) => {
 
 //         if (!err) {
-//             const pdo_id = results.insertId;
+//             const pmd_id = results.insertId;
 
-//             const values = productionOrderdetail.map(detail => [
-//                 detail.qty,
-//                 productionOrder.pdo_status,
-//                 pdo_id,
-//                 detail.pd_id,
+//             const values = promotiondetail.map(detail => [
+//                 detail.pm_id,
+//                 detail.smbuy_id,
+//                 detail.smfree_id,
 //                 null // กำหนดให้ deleted_at เป็น null
 //             ]);
 
 //             const detailQuery = `
-//                 INSERT INTO productionOrderdetail (qty, status, pdo_id,	pd_id,	deleted_at) 
+//                 INSERT INTO promotiondetail (pm_id, smbuy_id, smfree_id, deleted_at) 
 //                 VALUES ?
 //             `;
 
@@ -55,7 +118,7 @@
 //                     console.error("MySQL Error:", err);
 //                     return res.status(500).json({ message: "error", error: err });
 //                 } else {
-//                     return res.status(200).json({ message: "success", pdo_id });
+//                     return res.status(200).json({ message: "success", pmd_id });
 //                 }
 //             });
 //         } else {
@@ -66,1401 +129,414 @@
 
 // });
 
-
-// router.get('/readall', (req, res, next) => {
-//     // const indl_id = req.params.id;
-//     var query = `
-//     SELECT
-//         productionOrder.*,
-//         CONCAT('PD', LPAD(pdo_id, 7, '0')) AS pdo_id_name,
-//         DATE_FORMAT(updated_at, '%Y-%m-%d') AS 	updated_at,
-//         pdo_status
-//     FROM 
-//         productionOrder 
-//     WHERE 
-//         pdo_status != 0
-//     ORDER BY updated_at DESC   
-//     `;
-
-//     connection.query(query, (err, results) => {
-//         if (!err) {
-//             if (results.length > 0) {
-//                 return res.status(200).json(results);
-//             } else {
-//                 return res.status(404).json({ message: " productionOrder not found" });
-//             }
-//         } else {
-//             return res.status(500).json(err);
-//         }
-//     });
-// });
-
-// // router.get('/readone/:pdo_id', (req, res, next) => {
-// //     const pdo_id  = req.params.pdo_id ;
-// //     var query = `
-// //     SELECT 
-// //     CONCAT('PD', LPAD(pdo.pdo_id, 7, '0')) AS pdo_id_name,
-// //     DATE_FORMAT(pdo.updated_at, '%Y-%m-%d') AS updated_at,
-// //     pdod.*, pdc.pdc_name AS pdc_name 
-// // FROM 
-// //     productionOrder pdo 
-// //     JOIN productionOrderdetail pdod ON pdo.pdo_id = pdod.pdo_id 
-// //     JOIN products pd ON pdod.pd_id = pd.pd_id 
-// //     JOIN productCategory pdc ON pd.pdc_id = pdc.pdc_id 
-// // WHERE 
-// //     pdo.pdo_id = ?;
-
-// //     `;
-
-// //     connection.query(query, [pdo_id], (err, results) => {
-// //         if (!err) {
-// //             if (results.length > 0) {
-// //                 return res.status(200).json(results);
-
-// //             } else {
-// //                 return res.status(404).json({ message: "ingredient not found" });
-// //             }
-// //         } else {
-// //             return res.status(500).json(err);
-// //         }
-// //     });
-// // });
-
-// // แบบใช้ sql ไม่ได้ ต้อง อัปเดต something
-// // router.get('/readone/:pdo_id', (req, res, next) => {
-// //     const pdo_id = req.params.pdo_id;
-// //     var query = `
-// //     SELECT 
-// //         CONCAT('PD', LPAD(pdo.pdo_id, 7, '0')) AS pdo_id_name,
-// //         DATE_FORMAT(pdo.updated_at, '%Y-%m-%d') AS updated_at,
-// //         JSON_ARRAYAGG(JSON_OBJECT(
-// //             'pdod_id', pdod.pdod_id,
-// //             'qty', pdod.qty,
-// //             'status', pdod.status,
-// //             'pdo_id', pdod.pdo_id,
-// //             'pd_id', pdod.pd_id,
-// //             'created_at', pdod.created_at,
-// //             'deleted_at', pdod.deleted_at,
-// //             'pdc_name', pdc.pdc_name
-// //         )) AS pdodetail
-// //     FROM 
-// //         productionOrder pdo 
-// //         JOIN productionOrderdetail pdod ON pdo.pdo_id = pdod.pdo_id 
-// //         JOIN products pd ON pdod.pd_id = pd.pd_id 
-// //         JOIN productCategory pdc ON pd.pdc_id = pdc.pdc_id 
-// //     WHERE 
-// //         pdo.pdo_id = ? AND pdod.deleted_at IS NULL;`;
-
-// //     connection.query(query, [pdo_id], (err, results) => {
-// //         if (!err) {
-// //             if (results.length > 0) {
-// //                 // เพิ่มการแปลงข้อมูล JSON ก่อนส่งคืน
-// //                 results.forEach(result => {
-// //                     result.pdodetail = JSON.parse(result.pdodetail);
-// //                 });
-// //                 return res.status(200).json(results[0]);
-// //             } else {
-// //                 return res.status(404).json({ message: "ingredient not found" });
-// //             }
-// //         } else {
-// //             return res.status(500).json(err);
-// //         }
-// //     });
-// // });
-
-// //แบบไม่ใช้ sql
-// router.get('/readone/:pdo_id', (req, res, next) => {
-//     try {
-//         const pdo_id = req.params.pdo_id;
-
-//         const query = `
-//             SELECT 
-//                 pdo.pdo_status as pdo_status,
-//                 CONCAT('PD', LPAD(pdo.pdo_id, 7, '0')) AS pdo_id_name,
-//                 DATE_FORMAT(pdo.updated_at, '%Y-%m-%d') AS updated_at_pdo,
-//                 pdod.*, pdc.pdc_name AS pdc_name ,pd.pd_name as pd_name
-//             FROM 
-//                 productionOrder pdo 
-//                 JOIN productionOrderdetail pdod ON pdo.pdo_id = pdod.pdo_id 
-//                 JOIN products pd ON pdod.pd_id = pd.pd_id 
-//                 JOIN productCategory pdc ON pd.pdc_id = pdc.pdc_id 
-//             WHERE 
-//                 pdo.pdo_id = ? AND pdod.deleted_at IS NULL`;
-
-//         // const [results] = await connection.query(query, [pdo_id]);
-//         connection.query(query, pdo_id, (err, results) => {
-//             if (results.length > 0) {
-//                 const formattedResult = {
-//                     pdo_id_name: results[0].pdo_id_name,
-//                     pdo_status: results[0].pdo_status,
-//                     updated_at: results[0].updated_at_pdo,
-//                     pdodetail: results.map(item => ({
-//                         pdod_id: item.pdod_id,
-//                         qty: item.qty,
-//                         status: item.status,
-//                         pdo_id: item.pdo_id,
-//                         pd_id: item.pd_id,
-//                         // created_at: item.created_at,
-//                         // deleted_at: item.deleted_at,
-//                         pdc_name: item.pdc_name,
-//                         pd_name: item.pd_name
-//                     }))
-//                 };
-
-//                 return res.status(200).json(formattedResult);
-//             } else {
-//                 return res.status(404).json({ message: "ingredient not found" });
-//             }
-//         })
-//     } catch (error) {
-//         console.error('Error retrieving pdo:', error);
-//         return res.status(500).json({ message: 'Error retrieving pdo', error });
-//     }
-// });
-
-// //edit
-// router.patch('/editData/:pdo_id', isAdmin, (req, res, next) => {
-//     const pdo_id = req.params.pdo_id;
-//     // const dataToEdit = req.body.dataToEdit;
-//     const dataToEdit = req.body.dataToEdit;
-
-//     if (!dataToEdit || dataToEdit.length === 0) {
-//         return res.status(400).json({ message: "error", error: "No data to edit provided" });
-//     }
-//     const query1 = `SELECT pdo_status FROM productionOrder WHERE pdo_id = ?`;
-
-//     connection.query(query1, [pdo_id], (err, results) => {
-//         if (err) {
-//             console.error("MySQL Query Error:", err);
-//             // handle error
-//         }
-//         const pdo_status = results[0].pdo_status;
-
-//         console.log(pdo_status);
-
-//         if (pdo_status === '1') {
-//             // แยกข้อมูลที่ต้องการอัปเดต แยกเป็นข้อมูลที่ต้องการเพิ่ม และข้อมูลที่ต้องการลบ
-//             const updateData = [];
-//             const insertData = [];
-//             const deleteData = [];
-//             const query = `SELECT productionOrderdetail.pd_id FROM productionOrderdetail WHERE pdo_id = ?`;
-//             console.log(dataToEdit)
-
-//             let pdIdsQ = dataToEdit.map(detail => detail.pd_id).filter(id => id !== undefined);
-//             console.log(pdIdsQ);
-//             let pdIds;
-
-//             connection.query(query, [pdo_id], (err, results) => {
-//                 if (err) {
-//                     console.error("MySQL Query Error:", err);
-//                     // handle error
-//                 }
-
-//                 // ถ้าไม่มี error, results จะเป็น array ของ object ที่มี key เป็น 'ind_id'
-//                 pdIds = results.map(result => result.pd_id);
-//                 // console.log("indIds:", indIds);
-
-//                 pdIds.forEach(detail => {
-//                     //ยังอยู่ตรงนี้
-//                     // console.log(detail)
-//                     const selectedData = dataToEdit.filter(item => item.pd_id === detail);
-//                     // const indIdsNotInIndIdsQdata = dataToEdit.filter(item => item.ind_id === indIdsNotInIndIdsQ);
-//                     // console.log("for insert indIdsNotInIndIdsQdata",indIdsNotInIndIdsQdata)
-
-//                     console.log("for up selectedData", selectedData)
-
-//                     // console.log("for insert indIdsNotInIndIdsQ", indIdsNotInIndIdsQ)
-
-//                     if (detail) {
-//                         // ตรวจสอบว่า ind_id มีอยู่ในฐานข้อมูลหรือไม่
-//                         // const query = `SELECT ingredient_lot_detail.ind_id FROM ingredient_lot_detail WHERE indl_id = ?`;
-
-//                         if (pdIdsQ.includes(detail)) {
-//                             // ind_id มีอยู่ในฐานข้อมูล ให้ทำการอัปเดต
-//                             console.log("Update data:", selectedData);
-//                             updateData.push(selectedData);
-//                         } else {
-//                             if (pdIds) {
-//                                 // ind_id ไม่มีอยู่ในฐานข้อมูล ให้ทำการลบ
-//                                 console.log("delete data:", detail);
-//                                 deleteData.push(detail);
-//                             } else {
-//                                 // ind_id ไม่ได้ระบุ ให้ทำการเพิ่ม
-//                                 //ไม่ทำงาน
-//                                 //ค่อยคิด
-//                                 console.log("nonono insert data:", selectedData);
-//                                 insertData.push(selectedData);
-//                             }
-//                         }
-
-//                     } else {
-//                         // ind_id ไม่ได้ระบุ ให้ทำการเพิ่ม
-//                         //ค่อยคิด
-//                         console.log(detail)
-//                         insertData.push(detail);
-//                     }
-//                 });
-
-//                 const pdIdsNotInpdIdsQ = pdIdsQ.filter(id => !pdIds.includes(id));
-//                 console.log(pdIdsNotInpdIdsQ)
-
-//                 if (pdIdsNotInpdIdsQ != []) {
-//                     pdIdsNotInpdIdsQ.forEach(detail => {
-//                         console.log(detail)
-//                         const pdIdsNotInpdIdsQdata = dataToEdit.filter(item => item.pd_id === detail);
-//                         console.log("Insert data:", pdIdsNotInpdIdsQ);
-//                         insertData.push(pdIdsNotInpdIdsQdata);
-//                     });
-
-//                 }
-//                 console.log(deleteData, insertData, updateData)
-//                 // indIdsQ.forEach(detail => {
-
-//                 //     console.log(detail)
-//                 //     const selectedData = dataToEdit.filter(item => item.ind_id === detail);
-
-//                 // });
-//                 console.log("de length", deleteData.length)
-//                 console.log("in length", insertData.length)
-//                 console.log("ed length", updateData.length)
-//                 if (deleteData.length > 0) {
-//                     // const deleteQuery = "DELETE FROM Ingredient_lot_detail WHERE ind_id = ? AND indl_id = ?";
-//                     const deleteQuery = "UPDATE productionOrderdetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND pdo_id = ?";
-//                     deleteData.forEach(detail => {
-//                         const deleteValues = [detail, pdo_id];
-//                         console.log(deleteValues)
-
-//                         connection.query(deleteQuery, deleteValues, (err, results) => {
-//                             if (err) {
-//                                 console.error("MySQL Delete Query Error:", err);
-//                                 return res.status(500).json({ message: "error", error: err });
-//                             }
-
-//                             console.log("Deleted data:", results);
-//                         });
-//                     });
-//                 }
-
-//                 // ตรวจสอบว่ามีข้อมูลที่ต้องการเพิ่มหรือไม่
-//                 if (insertData.length > 0) {
-//                     console.log("database inn", insertData)
-//                     console.log("pdo id", pdo_id)
-//                     const insertQuery = "INSERT INTO productionOrderdetail (pd_id,qty, status, pdo_id , deleted_at) VALUES (?,?,?,?,?)";
-
-//                     const flattenedineData = insertData.flat();
-//                     console.log("flattenedineData", flattenedineData)
-
-//                     flattenedineData.forEach(detail => {
-//                         const insertValues = [
-//                             detail.pd_id,
-//                             detail.qty,
-//                             1,
-//                             pdo_id,
-//                             null // กำหนดให้ deleted_at เป็น null
-//                         ];
-
-//                         connection.query(insertQuery, insertValues, (err, results) => {
-//                             if (err) {
-//                                 console.error("MySQL Insert Query Error:", err);
-//                                 return res.status(500).json({ message: "error", error: err });
-//                             }
-
-//                             console.log("Inserted data:", results);
-//                         });
-//                     });
-
-
-//                 }
-
-//                 // ตรวจสอบว่ามีข้อมูลที่ต้องการอัปเดตหรือไม่
-//                 // console.log("updateData",updateData)
-//                 if (updateData.length > 0) {
-//                     console.log("database uppp", updateData)
-//                     // const updateQuery = "UPDATE Ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ? WHERE ind_id = ? AND indl_id = ?";
-//                     const updateQuery = "UPDATE productionOrderdetail SET qty = ?, status = 1, deleted_at = NULL WHERE pd_id = ? AND pdo_id = ?";
-//                     //การใช้ flat() จะช่วยให้คุณได้ array ที่ flatten แล้วที่มี object ภายใน ซึ่งจะทำให้ง่ายต่อการทำงานกับข้อมูลในลำดับถัดไป.
-//                     const flattenedUpdateData = updateData.flat();
-//                     console.log("flattenedUpdateData", flattenedUpdateData)
-//                     flattenedUpdateData.forEach(detail => {
-//                         const updateValues = [
-//                             detail.qty,
-//                             detail.pd_id,
-//                             pdo_id
-//                         ];
-
-//                         connection.query(updateQuery, updateValues, (err, results) => {
-//                             if (err) {
-//                                 console.error("MySQL Update Query Error:", err);
-//                                 return res.status(500).json({ message: "error", error: err });
-//                             }
-
-//                             console.log("Updated data:", results);
-//                         });
-//                     });
-
-//                 }
-
-//                 res.status(200).json({ message: "test เงื่อนไข" });
-//             });
-//         } else {
-//             return res.status(500).json({ message: "status != 1" });
-//         }
-//     });
-// });
-
-// // router.patch('/updatestatus/:pdo_id', (req, res, next) => {
-// //     const pdo_id = req.params.pdo_id;
-// //     var query = "UPDATE productionOrder SET pdo_status=2 WHERE pdo_id=?";
-// //     connection.query(query, [ pdo_id], (err, results) => {
-// //         if (!err) {
-// //             if (results.affectedRows === 0) {
-// //                 console.error(err);
-// //                 return res.status(404).json({ message: "id does not found" });
-// //             }
-// //             return res.status(200).json({ message: "update success" });
-// //         } else {
-// //             return res.status(500).json(err);
-// //         }
-// //     });
-// // });
-
-// //ยืนยันการผลิต 2=กำลังดำเนินการผลิต
-// router.patch('/updatestatus/:pdo_id', (req, res, next) => {
-//     const pdo_id = req.params.pdo_id;
-
-
-//     // Update pdo_status in productionOrder table
-//     var updateProductionOrderQuery = "UPDATE productionOrder SET pdo_status = 2 WHERE pdo_id = ?";
-//     connection.query(updateProductionOrderQuery, [pdo_id], (err, results) => {
-//         if (err) {
-//             console.error("Error updating pdo_status in productionOrder:", err);
-//             return res.status(500).json(err);
-//         }
-
-//         if (results.affectedRows === 0) {
-//             return res.status(404).json({ message: "Production order not found" });
-//         }
-
-//         // Update pdod_status in productionOrderdetail table
-//         var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 2 WHERE pdo_id = ?";
-//         connection.query(updateProductionOrderDetailQuery, [pdo_id], (detailErr, detailResults) => {
-//             if (detailErr) {
-//                 console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
-//                 return res.status(500).json(detailErr);
-//             }
-
-//             return res.status(200).json({ message: "Update success" });
-//         });
-//     });
-// });
-
-// //แก้ไขให้=3 เสร็จสิ้นแล้วสำหรับรายละเอียดบางอัน
-// // router.patch('/updatestatusdetail/:pdo_id', (req, res, next) => {
-// //     const pdod_id = req.params.pdo_id;
-
-
-// //     // Update pdo_status in productionOrder table
-// //     // Update pdod_status in productionOrderdetail table
-// //     var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 2 WHERE pdod_id = ?";
-// //     connection.query(updateProductionOrderDetailQuery, [pdod_id], (detailErr, detailResults) => {
-// //         if (detailErr) {
-// //             console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
-// //             return res.status(500).json(detailErr);
-// //         }
-
-// //         return res.status(200).json({ message: "Update success" });
-// //     });
-// // });
-
-// //ให้เป็นเสร็จสิ้น ส่งเป็นลิสท์
-// // router.patch('/updatestatusdetail', (req, res, next) => {
-// //     const pdod_ids = req.body.pdod_ids; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
-
-// //     if (!pdod_ids || pdod_ids.length === 0) {
-// //         return res.status(400).json({ message: "No pdod_id provided" });
-// //     }
-
-// //     // Update pdod_status in productionOrderdetail table for each pdod_id in the array
-// //     const updateQueries = pdod_ids.map(pdod_id => {
-// //         return new Promise((resolve, reject) => {
-// //             var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 3 WHERE pdod_id = ?";
-// //             connection.query(updateProductionOrderDetailQuery, [pdod_id], (detailErr, detailResults) => {
-// //                 if (detailErr) {
-// //                     console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
-// //                     reject(detailErr); // Reject หากเกิดข้อผิดพลาดในการอัปเดต
-// //                 } else {
-// //                     resolve(detailResults); // Resolve หากอัปเดตสำเร็จ
-// //                 }
-// //             });
-// //         });
-// //     });
-
-// //     // รวม Promise ของการอัปเดตทุก pdod_id และรอให้ทุก Promise เสร็จสิ้น
-// //     Promise.all(updateQueries)
-// //         .then(() => {
-// //             return res.status(200).json({ message: "Update success" });
-// //         })
-// //         .catch(err => {
-// //             return res.status(500).json(err); // คืนค่า error หากมีข้อผิดพลาดในการอัปเดต
-// //         });
-// // });
-
-// // เพิ่ม broken over
-
-// //35
-// router.patch('/updatestatusdetail', (req, res, next) => {
-//     const pdod_ids = req.body.pdod_ids; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
-//     const pdo_id = req.body.pdo_id; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
-//     const pdo_status = req.body.pdo_status; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
-
-//     if (!pdod_ids || pdod_ids.length === 0) {
-//         return res.status(400).json({ message: "No pdod_id provided" });
-//     }
-
-//     // Initialize a counter to track the number of completed queries
-//     let completedQueries = 0;
-//     let hasErrorOccurred = false;
-
-//     pdod_ids.forEach(pdod_id => {
-//         var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 3 WHERE pdod_id = ?";
-//         connection.query(updateProductionOrderDetailQuery, [pdod_id], (detailErr, detailResults) => {
-//             if (detailErr) {
-//                 console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
-//                 if (!hasErrorOccurred) {
-//                     hasErrorOccurred = true;
-//                     return res.status(500).json(detailErr); // Return the error if one occurs
-//                 }
-//             } else {
-//                 completedQueries++;
-//                 if (completedQueries === pdod_ids.length && !hasErrorOccurred) {
-//                     Status35(pdo_id,pdo_status)
-//                     console.log("pdo_id",pdo_id)
-//                     return res.status(200).json({ message: "Update success" }); // All queries completed successfully
-//                 }
-//             }
-//         });
-//     });
-// });
-
-
-// router.patch('/updatestatus3/:pdo_id', (req, res, next) => {
-//     const pdo_id = req.params.pdo_id;
-//     const 	{broken,over} = req.body;
-
-
-//     // Update pdo_status in productionOrder table
-//     var updateProductionOrderQuery = "UPDATE productionOrder SET pdo_status = 3  WHERE pdo_id = ?";
-//     connection.query(updateProductionOrderQuery, [pdo_id], (err, results) => {
-//         if (err) {
-//             console.error("Error updating pdo_status in productionOrder:", err);
-//             return res.status(500).json(err);
-//         }
-
-//         if (results.affectedRows === 0) {
-//             return res.status(404).json({ message: "Production order not found" });
-//         }
-
-//         // Update pdod_status in productionOrderdetail table
-//         var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 2 WHERE pdo_id = ?";
-//         connection.query(updateProductionOrderDetailQuery, [pdo_id], (detailErr, detailResults) => {
-//             if (detailErr) {
-//                 console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
-//                 return res.status(500).json(detailErr);
-//             }
-
-//             return res.status(200).json({ message: "Update success" });
-//         });
-//     });
-// });
-
-
-
-// // const Status3 = async (pdo_id) => {
-// //     console.log("Checking and updating status for pdo_id:", pdo_id);
-// //     try {
-// //         // Query to get the status of the production order and its details
-// //         const query = `
-// //             SELECT 
-// //                 pdo.pdo_status as pdo_status,
-// //                 pdod.status as pdode_status
-// //             FROM 
-// //                 productionOrder as pdo
-// //             LEFT JOIN 
-// //                 productionOrderdetail AS pdod ON pdod.pdo_id = pdo.pdo_id
-// //             WHERE  
-// //                 pdo.pdo_id = ?
-// //         `;
-
-// //         // Fetch the results
-// //         const [results] = await connection.promise().query(query, [pdo_id]);
-
-// //         // Extract statuses from the results
-// //         const statuses = results.map(item => item.pdode_status);
-// //         console.log("statuses",statuses)
-
-// //         // Check if all statuses are 3
-// //         const allStatusesAreThree = statuses.every(status => status === 3 || '3');
-// //         console.log("allStatusesAreThree",allStatusesAreThree)
-
-
-// //         if (allStatusesAreThree) {
-// //             // Update the status in productionOrder if all details have status 3
-// //             const updateQuery = "UPDATE productionOrder SET pdo_status = 3 WHERE pdo_id = ?";
-// //             await connection.promise().query(updateQuery, [pdo_id]);
-// //             console.log(`Updated status to 3 for pdo_id: ${pdo_id}`);
-// //         } else {
-// //             // Log the current statuses if not all are 3
-// //             console.log(`Statuses for pdo_id ${pdo_id}:`, statuses);
-// //         }
-
-// //     } catch (error) {
-// //         console.error('MySQL Error:', error);
-// //     }
-// // };
-
-// //แก้ เพราะมี 3=เสร็จสิ้นเหมือนเดิม 5= รออนุมัติ
-// const Status35 = async (pdo_id, newStatus) => {
-//     console.log("Checking and updating status for pdo_id:", pdo_id);
-//     try {
-//         // Query to get the status of the production order and its details
-//         const query = `
-//             SELECT 
-//                 pdo.pdo_status as pdo_status,
-//                 pdod.status as pdode_status
-//             FROM 
-//                 productionOrder as pdo
-//             LEFT JOIN 
-//                 productionOrderdetail AS pdod ON pdod.pdo_id = pdo.pdo_id
-//             WHERE  
-//                 pdo.pdo_id = ?
-//         `;
-
-//         // Fetch the results
-//         const [results] = await connection.promise().query(query, [pdo_id]);
-
-//         // Extract statuses from the results
-//         const statuses = results.map(item => item.pdode_status);
-//         console.log("statuses", statuses);
-
-//         // Check if all statuses are 3
-//         const allStatusesAreThree = statuses.every(status => status === 3 || status === '3');
-//         console.log("allStatusesAreThree", allStatusesAreThree);
-
-//         if (allStatusesAreThree) {
-//             // Update the status in productionOrder if all details have status 3
-//             const updateQuery = "UPDATE productionOrder SET pdo_status = ? WHERE pdo_id = ?";
-//             await connection.promise().query(updateQuery, [newStatus, pdo_id]);
-//             console.log(`Updated status to ${newStatus} for pdo_id: ${pdo_id}`);
-//         } else {
-//             // Log the current statuses if not all are 3
-//             console.log(`Statuses for pdo_id ${pdo_id}:`, statuses);
-//         }
-
-//     } catch (error) {
-//         console.error('MySQL Error:', error);
-//     }
-// };
-
-
-
-
-// //เพิ่มวัตถุดิบที่ใช้ตามผลิต
-// ///xxxxx
-// router.post('/addUseIngrediantnew', (req, res, next) => {
-//     const ingredient_Used = req.body.ingredient_Used;
-//     const ingredient_Used_detail = req.body.ingredient_Used_detail;
-
-
-//     // const query = "INSERT INTO ingredient_Used (status, note) VALUES (?, ?)";
-//     // connection.query(query, [ingredient_Used.status, ingredient_Used.note], (err, results) => {
-//     //     return res.status(500).json({ message: "error", error: err });
-//     //     }
-//     // });
-// });
-
-
-// //เอาไว้ก่อน
-// // สร้างฟังก์ชัน calculateMaterialCost คำนวณต้นทุนต่อ 1 วัตถุดิบ
-// function calculateMaterialCost(quantity, price, totalQuantity) {
-//     // คำนวณต้นทุนวัตถุดิบ
-//     const materialCost = (quantity * (price / totalQuantity)).toFixed(2);
-
-//     // ส่งค่าต้นทุนวัตถุดิบกลับ
-//     return { materialCost };
-// }
-
-
-
-
-// module.exports = router;
-
-
-
-// เอามาใหม่เพื่อจะลองแก้ไข 16/10
-const express = require("express");
-const connection = require("../connection");
-const router = express.Router();
-const pool = require('../connection');
-
-const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder } = require('../middleware')
-
-
-//ส่วน select ประเภทเมนู แล้วต้องไปแสดง pd ที่เป็นประเภทเมนูนี้ในอีก select
-router.get('/selectpdt/:pdc_id', (req, res, next) => {
-    const pdc_id = Number(req.params.pdc_id);
-
-    var query = `SELECT pd.pd_name, pdc.*
-    FROM productCategory pdc 
-    JOIN products pd ON pdc.pdc_id = pd.pdc_id 
-    WHERE pdc.pdc_id = ?`
-    connection.query(query, pdc_id, (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
+//เพิ่ม transaction 
+router.post('/addfree', (req, res, next) => {
+    const { pm_name, pm_datestart, pm_dateend, promotiondetail } = req.body;
+
+    // Start the transaction
+    connection.beginTransaction((err) => {
+        if (err) {
+            console.error("MySQL Error:", err);
+            return res.status(500).json({ message: "error", error: err });
+        }
+
+        const query = "INSERT INTO promotion (pm_name, pm_datestart, pm_dateend, deleted_at) VALUES (?,?,?,null)";
+
+        connection.query(query, [pm_name, pm_datestart, pm_dateend], (err, results) => {
+            if (err) {
+                return connection.rollback(() => {
+                    console.error("MySQL Error:", err);
+                    return res.status(500).json({ message: "error", error: err });
+                });
+            }
+
+            const pm_id = results.insertId;
+
+            // Flatten the arrays into pairs
+            const values = promotiondetail.flatMap(detail =>
+                detail.smbuy_id.flatMap(smbuy_id =>
+                    detail.smfree_id.map(smfree_id => [
+                        pm_id,
+                        smbuy_id,
+                        smfree_id,
+                        null
+                    ])
+                )
+            );
+
+            const detailQuery = `
+                INSERT INTO promotiondetail (pm_id, smbuy_id, smfree_id, deleted_at) 
+                VALUES ?
+            `;
+
+            connection.query(detailQuery, [values], (err, results) => {
+                if (err) {
+                    return connection.rollback(() => {
+                        console.error("MySQL Error:", err);
+                        return res.status(500).json({ message: "error", error: err });
+                    });
+                }
+
+                // Commit the transaction
+                connection.commit((err) => {
+                    if (err) {
+                        return connection.rollback(() => {
+                            console.error("MySQL Error:", err);
+                            return res.status(500).json({ message: "error", error: err });
+                        });
+                    }
+
+                    return res.status(200).json({ message: "success", pm_id });
+                });
+            });
+        });
+    });
+});
+;
+
+router.get('/readfree', (req, res, next) => {
+    const query = `
+    SELECT 
+        p.pm_id,
+        p.pm_name,
+        DATE_FORMAT(p.pm_datestart, '%Y-%m-%d') AS pm_datestart,
+        DATE_FORMAT(p.pm_dateend, '%Y-%m-%d') AS pm_dateend,
+        pd.pmd_id,
+        pd.smbuy_id,
+        pd.smfree_id,
+        smbuy.sm_name AS smbuy_idnamet,
+        smfree.sm_name AS smfree_idnamet,
+        smbuytype.smt_name AS smtbuy_idnamet,
+        smfreetype.smt_name AS smtfree_idnamet
+    FROM 
+        promotion p
+    JOIN 
+        promotiondetail pd ON p.pm_id = pd.pm_id
+    JOIN 
+        salesMenu smbuy ON pd.smbuy_id = smbuy.sm_id
+    JOIN 
+        salesMenu smfree ON pd.smfree_id = smfree.sm_id
+    JOIN 
+        salesMenuType smbuytype ON smbuy.smt_id = smbuytype.smt_id
+    JOIN 
+        salesMenuType smfreetype ON smfree.smt_id = smfreetype.smt_id;
+
+    `;
+
+    connection.query(query, (err, results) => {
+        if (err) {
             return res.status(500).json(err);
         }
+
+        // Group by pm_id
+        const groupedResults = results.reduce((acc, item) => {
+            if (!acc[item.pm_id]) {
+                acc[item.pm_id] = {
+                    pm_id: item.pm_id,
+                    pm_name: item.pm_name,
+                    pm_datestart: item.pm_datestart,
+                    pm_dateend: item.pm_dateend,
+                    detail: []
+                };
+            }
+
+            acc[item.pm_id].detail.push({
+                smbuy_id: item.smbuy_id,
+                smfree_id: item.smfree_id,
+                smbuy_idnamet: item.smbuy_idnamet,
+                smfree_idnamet: item.smfree_idnamet,
+                smbuytype: item.smtbuy_idnamet,
+                smfreetype: item.smtfree_idnamet
+            });
+
+            return acc;
+        }, {});
+
+        // Convert the groupedResults object to an array
+        const formattedResults = Object.values(groupedResults);
+
+        return res.status(200).json(formattedResults);
     });
-})
-
-//ยังไม่เพิ่มส่วน คำนวณต้นทุน
-router.post('/addProductionOrder', async (req, res, next) => {
-    const productionOrder = req.body.productionOrder[0];
-    const productionOrderdetail = req.body.productionOrderdetail;
-
-    try {
-        const insertQuery = "INSERT INTO productionorder (cost_pricesum, pdo_status) VALUES (null, ?)";
-        const [results] = await connection.promise().query(insertQuery, [productionOrder.pdo_status]);
-
-        const pdo_id = results.insertId;
-        console.log(productionOrder.pdo_status, "productionOrder.pdo_status");
-
-        const values = productionOrderdetail.map(detail => [
-            detail.qty,
-            productionOrder.pdo_status,
-            pdo_id,
-            detail.pd_id,
-            null // กำหนดให้ deleted_at เป็น null
-        ]);
-
-        const detailQuery = `
-            INSERT INTO productionorderdetail (qty, status, pdo_id, pd_id, deleted_at) VALUES ?
-        `;
-
-        await connection.promise().query(detailQuery, [values]);
-
-        res.status(200).json({ message: "success", pdo_id });
-    } catch (error) {
-        console.error("Database Error:", error);
-        res.status(500).json({
-            message: "An error occurred while adding production order",
-            error: error.message
-        });
-    }
 });
 
-router.get('/readall', async (req, res, next) => {
+router.get('/readfreedetail/:pm_id', async (req, res, next) => {
+    const pm_id = Number(req.params.pm_id);
+
     const query = `
-    SELECT
-        productionorder.*,
-        CONCAT('PD', LPAD(pdo_id, 7, '0')) AS pdo_id_name,
-        DATE_FORMAT(updated_at, '%Y-%m-%d') AS updated_at,
-        pdo_status
+    SELECT 
+        p.pm_id,
+        p.pm_name,
+        DATE_FORMAT(p.pm_datestart, '%Y-%m-%d') AS pm_datestart,
+        DATE_FORMAT(p.pm_dateend, '%Y-%m-%d') AS pm_dateend,
+        pd.pmd_id,
+        pd.smbuy_id,
+        pd.smfree_id,
+        smbuy.sm_name AS smbuy_idnamet,
+        smfree.sm_name AS smfree_idnamet,
+        smbuytype.smt_name AS smtbuy_idnamet,
+        smfreetype.smt_name AS smtfree_idnamet
     FROM 
-        productionorder 
+        promotion p
+    JOIN 
+        promotiondetail pd ON p.pm_id = pd.pm_id
+    JOIN 
+        salesMenu smbuy ON pd.smbuy_id = smbuy.sm_id
+    JOIN 
+        salesMenu smfree ON pd.smfree_id = smfree.sm_id
+    JOIN 
+        salesMenuType smbuytype ON smbuy.smt_id = smbuytype.smt_id
+    JOIN 
+        salesMenuType smfreetype ON smfree.smt_id = smfreetype.smt_id
     WHERE 
-        pdo_status != 0
-    ORDER BY updated_at DESC   
+        p.pm_id = ? AND pd.deleted_at IS NULL;
+    
     `;
 
-    try {
-        const [results] = await connection.promise().query(query);
-
-        if (results.length > 0) {
-            return res.status(200).json(results);
-        } else {
-            return res.status(404).json({ message: "Production orders not found" });
-        }
-    } catch (error) {
-        console.error("Database Query Error:", error);
-        return res.status(500).json({
-            message: "An error occurred while fetching production orders",
-            error: error.message
-        });
-    }
-});
-
-// router.get('/readone/:pdo_id', (req, res, next) => {
-//     const pdo_id  = req.params.pdo_id ;
-//     var query = `
-//     SELECT 
-//     CONCAT('PD', LPAD(pdo.pdo_id, 7, '0')) AS pdo_id_name,
-//     DATE_FORMAT(pdo.updated_at, '%Y-%m-%d') AS updated_at,
-//     pdod.*, pdc.pdc_name AS pdc_name 
-// FROM 
-//     productionOrder pdo 
-//     JOIN productionOrderdetail pdod ON pdo.pdo_id = pdod.pdo_id 
-//     JOIN products pd ON pdod.pd_id = pd.pd_id 
-//     JOIN productCategory pdc ON pd.pdc_id = pdc.pdc_id 
-// WHERE 
-//     pdo.pdo_id = ?;
-
-//     `;
-
-//     connection.query(query, [pdo_id], (err, results) => {
-//         if (!err) {
-//             if (results.length > 0) {
-//                 return res.status(200).json(results);
-
-//             } else {
-//                 return res.status(404).json({ message: "ingredient not found" });
-//             }
-//         } else {
-//             return res.status(500).json(err);
-//         }
-//     });
-// });
-
-// แบบใช้ sql ไม่ได้ ต้อง อัปเดต something
-// router.get('/readone/:pdo_id', (req, res, next) => {
-//     const pdo_id = req.params.pdo_id;
-//     var query = `
-//     SELECT 
-//         CONCAT('PD', LPAD(pdo.pdo_id, 7, '0')) AS pdo_id_name,
-//         DATE_FORMAT(pdo.updated_at, '%Y-%m-%d') AS updated_at,
-//         JSON_ARRAYAGG(JSON_OBJECT(
-//             'pdod_id', pdod.pdod_id,
-//             'qty', pdod.qty,
-//             'status', pdod.status,
-//             'pdo_id', pdod.pdo_id,
-//             'pd_id', pdod.pd_id,
-//             'created_at', pdod.created_at,
-//             'deleted_at', pdod.deleted_at,
-//             'pdc_name', pdc.pdc_name
-//         )) AS pdodetail
-//     FROM 
-//         productionOrder pdo 
-//         JOIN productionOrderdetail pdod ON pdo.pdo_id = pdod.pdo_id 
-//         JOIN products pd ON pdod.pd_id = pd.pd_id 
-//         JOIN productCategory pdc ON pd.pdc_id = pdc.pdc_id 
-//     WHERE 
-//         pdo.pdo_id = ? AND pdod.deleted_at IS NULL;`;
-
-//     connection.query(query, [pdo_id], (err, results) => {
-//         if (!err) {
-//             if (results.length > 0) {
-//                 // เพิ่มการแปลงข้อมูล JSON ก่อนส่งคืน
-//                 results.forEach(result => {
-//                     result.pdodetail = JSON.parse(result.pdodetail);
-//                 });
-//                 return res.status(200).json(results[0]);
-//             } else {
-//                 return res.status(404).json({ message: "ingredient not found" });
-//             }
-//         } else {
-//             return res.status(500).json(err);
-//         }
-//     });
-// });
-
-//แบบไม่ใช้ sql
-router.get('/readone/:pdo_id', (req, res, next) => {
-    try {
-        const pdo_id = req.params.pdo_id;
-
-        const query = `
-            SELECT 
-                pdo.pdo_status as pdo_status,
-                pdod.broken as pdod_broken,
-                pdod.over as pdod_over,
-                CONCAT('PD', LPAD(pdo.pdo_id, 7, '0')) AS pdo_id_name,
-                DATE_FORMAT(pdo.updated_at, '%Y-%m-%d') AS updated_at_pdo,
-                pdod.*, pdc.pdc_name AS pdc_name ,pd.pd_name as pd_name
-            FROM 
-                productionorder pdo 
-                JOIN productionorderdetail pdod ON pdo.pdo_id = pdod.pdo_id 
-                JOIN products pd ON pdod.pd_id = pd.pd_id 
-                JOIN productcategory pdc ON pd.pdc_id = pdc.pdc_id 
-            WHERE 
-                pdo.pdo_id = ? AND pdod.deleted_at IS NULL`;
-
-        connection.query(query, [pdo_id], (err, results) => {
-            if (err) {
-                console.error("MySQL Query Error:", err);
-                return res.status(500).json({ message: "Error retrieving pdo", error: err });
-            }
-
-            if (results && results.length > 0) {
-                const formattedResult = {
-                    pdo_id_name: results[0].pdo_id_name,
-                    pdo_status: results[0].pdo_status,
-                    updated_at: results[0].updated_at_pdo,
-                    pdodetail: results.map(item => ({
-                        pdod_id: item.pdod_id,
-                        pdod_broken: item.pdod_broken,
-                        pdod_over: item.pdod_over,
-                        qty: item.qty,
-                        status: item.status,
-                        pdo_id: item.pdo_id,
-                        pd_id: item.pd_id,
-                        pdc_name: item.pdc_name,
-                        pd_name: item.pd_name
-                    }))
-                };
-
-                return res.status(200).json(formattedResult);
-            } else {
-                return res.status(404).json({ message: "PDO not found" });
-            }
-        });
-    } catch (error) {
-        console.error('Error retrieving pdo:', error);
-        return res.status(500).json({ message: 'Error retrieving pdo', error });
-    }
-});
-
-
-//edit
-router.patch('/editData/:pdo_id', (req, res, next) => {
-    const pdo_id = req.params.pdo_id;
-    // const dataToEdit = req.body.dataToEdit;
-    const dataToEdit = req.body.dataToEdit;
-
-    if (!dataToEdit || dataToEdit.length === 0) {
-        return res.status(400).json({ message: "error", error: "No data to edit provided" });
-    }
-    const query1 = `SELECT pdo_status FROM productionorder WHERE pdo_id = ?`;
-
-    connection.query(query1, [pdo_id], (err, results) => {
+    connection.query(query, [pm_id], (err, results) => {
         if (err) {
-            console.error("MySQL Query Error:", err);
-            // handle error
+            return res.status(500).json(err);
         }
-        const pdo_status = results[0].pdo_status;
 
-        console.log(pdo_status);
+        // Group by pm_id
+        const groupedResults = results.reduce((acc, item) => {
+            if (!acc[item.pm_id]) {
+                acc[item.pm_id] = {
+                    pm_id: item.pm_id,
+                    pm_name: item.pm_name,
+                    pm_datestart: item.pm_datestart,
+                    pm_dateend: item.pm_dateend,
+                    detail: []
+                };
+            }
 
-        if (pdo_status === '1') {
-            // แยกข้อมูลที่ต้องการอัปเดต แยกเป็นข้อมูลที่ต้องการเพิ่ม และข้อมูลที่ต้องการลบ
-            const updateData = [];
-            const insertData = [];
-            const deleteData = [];
-            const query = `SELECT productionorderdetail.pd_id FROM productionorderdetail WHERE pdo_id = ?`;
-            console.log(dataToEdit)
-
-            let pdIdsQ = dataToEdit.map(detail => detail.pd_id).filter(id => id !== undefined);
-            console.log(pdIdsQ);
-            let pdIds;
-
-            connection.query(query, [pdo_id], (err, results) => {
-                if (err) {
-                    console.error("MySQL Query Error:", err);
-                    // handle error
-                }
-
-                // ถ้าไม่มี error, results จะเป็น array ของ object ที่มี key เป็น 'ind_id'
-                pdIds = results.map(result => result.pd_id);
-                // console.log("indIds:", indIds);
-
-                pdIds.forEach(detail => {
-                    //ยังอยู่ตรงนี้
-                    // console.log(detail)
-                    const selectedData = dataToEdit.filter(item => item.pd_id === detail);
-                    // const indIdsNotInIndIdsQdata = dataToEdit.filter(item => item.ind_id === indIdsNotInIndIdsQ);
-                    // console.log("for insert indIdsNotInIndIdsQdata",indIdsNotInIndIdsQdata)
-
-                    console.log("for up selectedData", selectedData)
-
-                    // console.log("for insert indIdsNotInIndIdsQ", indIdsNotInIndIdsQ)
-
-                    if (detail) {
-                        // ตรวจสอบว่า ind_id มีอยู่ในฐานข้อมูลหรือไม่
-                        // const query = `SELECT ingredient_lot_detail.ind_id FROM ingredient_lot_detail WHERE indl_id = ?`;
-
-                        if (pdIdsQ.includes(detail)) {
-                            // ind_id มีอยู่ในฐานข้อมูล ให้ทำการอัปเดต
-                            console.log("Update data:", selectedData);
-                            updateData.push(selectedData);
-                        } else {
-                            if (pdIds) {
-                                // ind_id ไม่มีอยู่ในฐานข้อมูล ให้ทำการลบ
-                                console.log("delete data:", detail);
-                                deleteData.push(detail);
-                            } else {
-                                // ind_id ไม่ได้ระบุ ให้ทำการเพิ่ม
-                                //ไม่ทำงาน
-                                //ค่อยคิด
-                                console.log("nonono insert data:", selectedData);
-                                insertData.push(selectedData);
-                            }
-                        }
-
-                    } else {
-                        // ind_id ไม่ได้ระบุ ให้ทำการเพิ่ม
-                        //ค่อยคิด
-                        console.log(detail)
-                        insertData.push(detail);
-                    }
-                });
-
-                const pdIdsNotInpdIdsQ = pdIdsQ.filter(id => !pdIds.includes(id));
-                console.log(pdIdsNotInpdIdsQ)
-
-                if (pdIdsNotInpdIdsQ != []) {
-                    pdIdsNotInpdIdsQ.forEach(detail => {
-                        console.log(detail)
-                        const pdIdsNotInpdIdsQdata = dataToEdit.filter(item => item.pd_id === detail);
-                        console.log("Insert data:", pdIdsNotInpdIdsQ);
-                        insertData.push(pdIdsNotInpdIdsQdata);
-                    });
-
-                }
-                console.log(deleteData, insertData, updateData)
-                // indIdsQ.forEach(detail => {
-
-                //     console.log(detail)
-                //     const selectedData = dataToEdit.filter(item => item.ind_id === detail);
-
-                // });
-                console.log("de length", deleteData.length)
-                console.log("in length", insertData.length)
-                console.log("ed length", updateData.length)
-                if (deleteData.length > 0) {
-                    // const deleteQuery = "DELETE FROM Ingredient_lot_detail WHERE ind_id = ? AND indl_id = ?";
-                    const deleteQuery = "UPDATE productionorderdetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND pdo_id = ?";
-                    deleteData.forEach(detail => {
-                        const deleteValues = [detail, pdo_id];
-                        console.log(deleteValues)
-
-                        connection.query(deleteQuery, deleteValues, (err, results) => {
-                            if (err) {
-                                console.error("MySQL Delete Query Error:", err);
-                                return res.status(500).json({ message: "error", error: err });
-                            }
-
-                            console.log("Deleted data:", results);
-                        });
-                    });
-                }
-
-                // ตรวจสอบว่ามีข้อมูลที่ต้องการเพิ่มหรือไม่
-                if (insertData.length > 0) {
-                    console.log("database inn", insertData)
-                    console.log("pdo id", pdo_id)
-                    const insertQuery = "INSERT INTO productionorderdetail (pd_id,qty, status, pdo_id , deleted_at) VALUES (?,?,?,?,?)";
-
-                    const flattenedineData = insertData.flat();
-                    console.log("flattenedineData", flattenedineData)
-
-                    flattenedineData.forEach(detail => {
-                        const insertValues = [
-                            detail.pd_id,
-                            detail.qty,
-                            1,
-                            pdo_id,
-                            null // กำหนดให้ deleted_at เป็น null
-                        ];
-
-                        connection.query(insertQuery, insertValues, (err, results) => {
-                            if (err) {
-                                console.error("MySQL Insert Query Error:", err);
-                                return res.status(500).json({ message: "error", error: err });
-                            }
-
-                            console.log("Inserted data:", results);
-                        });
-                    });
-
-
-                }
-
-                // ตรวจสอบว่ามีข้อมูลที่ต้องการอัปเดตหรือไม่
-                // console.log("updateData",updateData)
-                if (updateData.length > 0) {
-                    console.log("database uppp", updateData)
-                    // const updateQuery = "UPDATE Ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ? WHERE ind_id = ? AND indl_id = ?";
-                    const updateQuery = "UPDATE productionorderdetail SET qty = ?, status = 1, deleted_at = NULL WHERE pd_id = ? AND pdo_id = ?";
-                    //การใช้ flat() จะช่วยให้คุณได้ array ที่ flatten แล้วที่มี object ภายใน ซึ่งจะทำให้ง่ายต่อการทำงานกับข้อมูลในลำดับถัดไป.
-                    const flattenedUpdateData = updateData.flat();
-                    console.log("flattenedUpdateData", flattenedUpdateData)
-                    flattenedUpdateData.forEach(detail => {
-                        const updateValues = [
-                            detail.qty,
-                            detail.pd_id,
-                            pdo_id
-                        ];
-
-                        connection.query(updateQuery, updateValues, (err, results) => {
-                            if (err) {
-                                console.error("MySQL Update Query Error:", err);
-                                return res.status(500).json({ message: "error", error: err });
-                            }
-
-                            console.log("Updated data:", results);
-                        });
-                    });
-
-                }
-
-                res.status(200).json({ message: "test เงื่อนไข" });
+            acc[item.pm_id].detail.push({
+                smbuy_id: item.smbuy_id,
+                smfree_id: item.smfree_id,
+                smbuy_idnamet: item.smbuy_idnamet,
+                smfree_idnamet: item.smfree_idnamet,
+                smbuytype: item.smtbuy_idnamet,
+                smfreetype: item.smtfree_idnamet
             });
-        } else {
-            return res.status(500).json({ message: "status != 1" });
-        }
+
+            return acc;
+        }, {});
+
+        // Convert the groupedResults object to an array
+        const formattedResults = Object.values(groupedResults);
+
+        return res.status(200).json(formattedResults);
     });
 });
 
-// router.patch('/updatestatus/:pdo_id', (req, res, next) => {
-//     const pdo_id = req.params.pdo_id;
-//     var query = "UPDATE productionOrder SET pdo_status=2 WHERE pdo_id=?";
-//     connection.query(query, [ pdo_id], (err, results) => {
-//         if (!err) {
-//             if (results.affectedRows === 0) {
-//                 console.error(err);
-//                 return res.status(404).json({ message: "id does not found" });
+// 
+//ไม่ได้ค่าคุรน้า ไปถามใหม่แบบให้นับแถวที่มีของ idpm นั้น แล้วแก้ไขเลย เกินก็ลบ ขาดก็เพิ่ม
+// ตอนนี้มันลบไปเลย ไม่ใช่ sd แล้วลบหมดแอดใหม่เอา ซึ่งถ้าทำการขายน่าจะบ่ได้เด้อค่าเว้นแต่เก็บเพิ่มในออเดอร์เอา
+
+//ยังไม่ลองข้อมูลสินค้าให้ว่าง
+// router.put('/updatefree', (req, res, next) => {
+//     const { pm_id, pm_name, pm_datestart, pm_dateend, promotiondetail } = req.body;
+//     console.log(promotiondetail,'promotiondetail')
+
+//     // Start the transaction
+//     connection.beginTransaction((err) => {
+//         if (err) {
+//             console.error("MySQL Error:", err);
+//             return res.status(500).json({ message: "error", error: err });
+//         }
+
+//         // Update the promotion table
+//         const updateQuery = `
+//             UPDATE promotion 
+//             SET pm_name = ?, pm_datestart = ?, pm_dateend = ? 
+//             WHERE pm_id = ?
+//         `;
+
+//         connection.query(updateQuery, [pm_name, pm_datestart, pm_dateend, pm_id], (err, results) => {
+//             if (err) {
+//                 return connection.rollback(() => {
+//                     console.error("MySQL Error:", err);
+//                     return res.status(500).json({ message: "error", error: err });
+//                 });
 //             }
-//             return res.status(200).json({ message: "update success" });
-//         } else {
-//             return res.status(500).json(err);
-//         }
-//     });
-// });
 
-//ยืนยันการผลิต 2=กำลังดำเนินการผลิต
-router.patch('/updatestatus/:pdo_id', async (req, res, next) => {
-    const pdo_id = req.params.pdo_id;
+//             // Delete all old promotion details for the given pm_id
+//             // const deleteOldDetailsQuery = `
+//             //     DELETE FROM promotiondetail 
+//             //     WHERE pm_id = ?
+//             // `;
 
-    try {
-        // Update pdo_status in productionOrder table
-        const updateProductionOrderQuery = "UPDATE productionorder SET pdo_status = 2 WHERE pdo_id = ?";
-        const [orderResults] = await connection.promise().query(updateProductionOrderQuery, [pdo_id]);
+//             // connection.query(deleteOldDetailsQuery, [pm_id], (err, results) => {
+//             //     if (err) {
+//             //         return connection.rollback(() => {
+//             //             console.error("MySQL Error:", err);
+//             //             return res.status(500).json({ message: "error", error: err });
+//             //         });
+//             //     }
+            
+//             //เปลี่ยนมาเป็น sd ยังไม่เทส
+//             const softDeleteQuery = `
+//             UPDATE promotiondetail 
+//             SET deleted_at = NOW() 
+//             WHERE pm_id = ?
+//         `;
 
-        if (orderResults.affectedRows === 0) {
-            return res.status(404).json({ message: "Production order not found" });
-        }
-
-        // Update pdod_status in productionOrderdetail table
-        const updateProductionOrderDetailQuery = "UPDATE productionorderdetail SET status = 2 WHERE pdo_id = ?";
-        await connection.promise().query(updateProductionOrderDetailQuery, [pdo_id]);
-
-        res.status(200).json({ message: "Update success" });
-    } catch (error) {
-        console.error("Database Error:", error);
-        res.status(500).json({
-            message: "An error occurred while updating production order status",
-            error: error.message
-        });
-    }
-});
-
-router.patch('/updatestatus3/:pdo_id', async (req, res, next) => {
-    const pdo_id = req.params.pdo_id;
-
-    const conn = await connection.promise().getConnection();
-
-    try {
-        await conn.beginTransaction();
-
-        // Update pdo_status in productionOrder table
-        const [orderResults] = await conn.query(
-            "UPDATE productionorder SET pdo_status = 3 WHERE pdo_id = ?",
-            [pdo_id]
-        );
-
-        if (orderResults.affectedRows === 0) {
-            await conn.rollback();
-            return res.status(404).json({ message: "Production order not found" });
-        }
-
-        // Update pdod_status in productionOrderdetail table
-        await conn.query(
-            "UPDATE productionorderdetail SET status = 2 WHERE pdo_id = ?",
-            [pdo_id]
-        );
-
-        await conn.commit();
-        res.status(200).json({ message: "Update successful" });
-
-    } catch (error) {
-        await conn.rollback();
-        console.error("Error updating production order status:", error);
-        res.status(500).json({
-            message: "An error occurred while updating production order status",
-            error: error.message
-        });
-    } finally {
-        conn.release();
-    }
-});
-
-//แก้ไขให้=3 เสร็จสิ้นแล้วสำหรับรายละเอียดบางอัน
-// router.patch('/updatestatusdetail/:pdo_id', (req, res, next) => {
-//     const pdod_id = req.params.pdo_id;
-
-
-//     // Update pdo_status in productionOrder table
-//     // Update pdod_status in productionOrderdetail table
-//     var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 2 WHERE pdod_id = ?";
-//     connection.query(updateProductionOrderDetailQuery, [pdod_id], (detailErr, detailResults) => {
-//         if (detailErr) {
-//             console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
-//             return res.status(500).json(detailErr);
-//         }
-
-//         return res.status(200).json({ message: "Update success" });
-//     });
-// });
-
-//ให้เป็นเสร็จสิ้น ส่งเป็นลิสท์
-// router.patch('/updatestatusdetail',  (req, res, next) => {
-//     const pdod_ids = req.body.pdod_ids; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
-
-//     if (!pdod_ids || pdod_ids.length === 0) {
-//         return res.status(400).json({ message: "No pdod_id provided" });
-//     }
-
-//     // Update pdod_status in productionOrderdetail table for each pdod_id in the array
-//     const updateQueries = pdod_ids.map(pdod_id => {
-//         return new Promise((resolve, reject) => {
-//             var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 3 WHERE pdod_id = ?";
-//             connection.query(updateProductionOrderDetailQuery, [pdod_id], (detailErr, detailResults) => {
-//                 if (detailErr) {
-//                     console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
-//                     reject(detailErr); // Reject หากเกิดข้อผิดพลาดในการอัปเดต
-//                 } else {
-//                     resolve(detailResults); // Resolve หากอัปเดตสำเร็จ
+//             connection.query(softDeleteQuery, [pm_id], (err, results) => {
+//                 if (err) {
+//                     return connection.rollback(() => {
+//                         console.error("MySQL Error:", err);
+//                         return res.status(500).json({ message: "error", error: err });
+//                     });
 //                 }
+//                 // Prepare new details to insert
+//                 const newDetails = promotiondetail.flatMap(detail =>
+//                     detail.smbuy_id.flatMap(smbuy_id =>
+//                         detail.smfree_id.map(smfree_id => [
+//                             pm_id,
+//                             smbuy_id,
+//                             smfree_id,
+//                             null // Adding NULL for the deleted_at column
+//                         ])
+//                     )
+//                 );
+
+//                 // Insert the new details
+//                 const insertQuery = `
+//                     INSERT INTO promotiondetail (pm_id, smbuy_id, smfree_id, deleted_at) 
+//                     VALUES ?
+//                 `;
+
+//                 connection.query(insertQuery, [newDetails], (err, results) => {
+//                     if (err) {
+//                         return connection.rollback(() => {
+//                             console.error("MySQL Error:", err);
+//                             return res.status(500).json({ message: "error", error: err });
+//                         });
+//                     }
+
+//                     // Commit the transaction
+//                     connection.commit((err) => {
+//                         if (err) {
+//                             return connection.rollback(() => {
+//                                 console.error("MySQL Error:", err);
+//                                 return res.status(500).json({ message: "error", error: err });
+//                             });
+//                         }
+
+//                         return res.status(200).json({ message: "success", pm_id });
+//                     });
+//                 });
 //             });
 //         });
 //     });
-
-//     // รวม Promise ของการอัปเดตทุก pdod_id และรอให้ทุก Promise เสร็จสิ้น
-//     Promise.all(updateQueries)
-//         .then(() => {
-//             return res.status(200).json({ message: "Update success" });
-//         })
-//         .catch(err => {
-//             return res.status(500).json(err); // คืนค่า error หากมีข้อผิดพลาดในการอัปเดต
-//         });
 // });
 
+router.put('/updatefree', (req, res, next) => {
+    const { pm_id, pm_name, pm_datestart, pm_dateend, promotiondetail } = req.body;
+    console.log(promotiondetail, 'promotiondetail');
 
-
-
-
-
-
-// router.patch('/updatestatusdetail', (req, res, next) => {
-//     const pdod_ids = req.body.pdod_ids; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
-//     const pdo_id = req.body.pdo_id;
-
-//     if (!pdod_ids || pdod_ids.length === 0) {
-//         return res.status(400).json({ message: "No pdod_id provided" });
-//     }
-
-//     // Initialize a counter to track the number of completed queries
-//     let completedQueries = 0;
-//     let hasErrorOccurred = false;
-
-//     pdod_ids.forEach(pdod_id => {
-//         var updateProductionOrderDetailQuery = "UPDATE productionOrderdetail SET status = 3 WHERE pdod_id = ?";
-//         connection.query(updateProductionOrderDetailQuery, [pdod_id], (detailErr, detailResults) => {
-//             if (detailErr) {
-//                 console.error("Error updating pdod_status in productionOrderdetail:", detailErr);
-//                 if (!hasErrorOccurred) {
-//                     hasErrorOccurred = true;
-//                     return res.status(500).json(detailErr); // Return the error if one occurs
-//                 }
-//             } else {
-//                 completedQueries++;
-//                 if (completedQueries === pdod_ids.length && !hasErrorOccurred) {
-//                     console.log(pdo_id, "pdo_id")
-//                     Status3(pdo_id)
-//                     return res.status(200).json({ message: "Update success" }); // All queries completed successfully
-//                 }
-//             }
-//         });
-//     });
-// });
-
-//35
-// router.patch('/updatestatusdetail', (req, res, next) => {
-//     const pdod_ids = req.body.pdod_ids; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
-//     const pdo_id = req.body.pdo_id; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
-//     const pdo_status = req.body.pdo_status; // รับ array หรือ list ของ pdod_id ที่ต้องการแก้ไข
-
-
-//     if (!pdod_ids || pdod_ids.length === 0) {
-//         return res.status(400).json({ message: "No pdod_id provided" });
-//     }
-
-//     // Initialize a counter to track the number of completed queries
-//     let completedQueries = 0;
-//     let hasErrorOccurred = false;
-
-//     pdod_ids.forEach(pdod_id => {
-//         var updateProductionOrderDetailQuery = "UPDATE productionorderdetail SET status = 3 WHERE pdod_id = ?";
-//         connection.query(updateProductionOrderDetailQuery, [pdod_id], (detailErr, detailResults) => {
-//             if (detailErr) {
-//                 console.error("Error updating pdod_status in productionorderdetail:", detailErr);
-//                 if (!hasErrorOccurred) {
-//                     hasErrorOccurred = true;
-//                     return res.status(500).json(detailErr); // Return the error if one occurs
-//                 }
-//             } else {
-//                 completedQueries++;
-//                 if (completedQueries === pdod_ids.length && !hasErrorOccurred) {
-//                     Status35(pdo_id, pdo_status)
-//                     console.log("pdo_id", pdo_id)
-//                     return res.status(200).json({ message: "Update success" }); // All queries completed successfully
-//                 }
-//             }
-//         });
-//     });
-// });
-//เพิ่ม bk over
-// ส่งไปแบบ
-// {
-//     "pdo_id": "3",
-//     "pdo_status": 5,
-//     "pdod_ids": [
-//       {
-//         "pdod_id": 5,
-//         "broken": 0,
-//         "over": 3
-//       },
-//       {
-//         "pdod_id": 6,
-//         "broken": 0,
-//         "over": 2
-//       }
-//     ]
-//   }
-
-// const express = require('express');
-// const connection = require("../connection");
-// const router = express.Router();
-// ปรับปรุงฟังก์ชัน updatePdodStock
-// ปรับปรุงฟังก์ชัน updatePdodStock
-async function updatePdodStock() {
-    const updateQuery = `
-        UPDATE productionorderdetail
-        SET pdod_stock = CASE
-            WHEN status IN (3, 4) THEN GREATEST(0, qty - COALESCE(broken, 0) + COALESCE(\`over\`, 0))
-            ELSE 0
-        END
-    `;
-    
-    await connection.promise().query(updateQuery);
-}
-
-// router.patch ยังคงเหมือนเดิม
-router.patch('/updatestatusdetail', async (req, res, next) => {
-    const { pdod_ids: pdodDetails, pdo_id, pdo_status } = req.body;
-
-    if (!pdodDetails || pdodDetails.length === 0) {
-        return res.status(400).json({ message: "No pdod_id provided" });
-    }
-
-    try {
-        for (const pdodDetail of pdodDetails) {
-            const { pdod_id, broken, over } = pdodDetail;
-            await updateProductionOrderDetail(pdod_id, broken, over);
+    // เริ่มต้นธุรกรรม
+    connection.beginTransaction((err) => {
+        if (err) {
+            console.error("ข้อผิดพลาด MySQL:", err);
+            return res.status(500).json({ message: "error", error: err });
         }
 
-        // คำนวณ pdod_stock ใหม่สำหรับทุกแถว รับประกันว่าไม่ติดลบ
-        await updatePdodStock();
+        // อัปเดตตารางโปรโมชั่น
+        const updateQuery = `
+            UPDATE promotion 
+            SET pm_name = ?, pm_datestart = ?, pm_dateend = ? 
+            WHERE pm_id = ?
+        `;
 
-        await Status35(pdo_id, pdo_status);
-        console.log("Updated pdo_id:", pdo_id);
-        return res.status(200).json({ message: "Update successful" });
-    } catch (error) {
-        console.error("Error updating production order details:", error);
-        return res.status(500).json({ message: "Update failed", error: error.message });
-    }
+        connection.query(updateQuery, [pm_name, pm_datestart, pm_dateend, pm_id], (err, results) => {
+            if (err) {
+                return connection.rollback(() => {
+                    console.error("ข้อผิดพลาด MySQL:", err);
+                    return res.status(500).json({ message: "error", error: err });
+                });
+            }
+
+            // ตรวจสอบว่า promotiondetail มี smbuy_id และ smfree_id ว่างเปล่าหรือไม่
+            const allEmpty = promotiondetail.every(detail => detail.smbuy_id.length === 0 && detail.smfree_id.length === 0);
+
+            if (!allEmpty) {
+                // อัปเดตข้อมูลโปรโมชั่นเดิม
+                const softDeleteQuery = `
+                    UPDATE promotiondetail 
+                    SET deleted_at = NOW() 
+                    WHERE pm_id = ?
+                `;
+
+                connection.query(softDeleteQuery, [pm_id], (err, results) => {
+                    if (err) {
+                        return connection.rollback(() => {
+                            console.error("ข้อผิดพลาด MySQL:", err);
+                            return res.status(500).json({ message: "error", error: err });
+                        });
+                    }
+
+                    // เตรียมรายละเอียดใหม่ที่จะนำเข้า
+                    const newDetails = promotiondetail.flatMap(detail =>
+                        detail.smbuy_id.flatMap(smbuy_id =>
+                            detail.smfree_id.map(smfree_id => [
+                                pm_id,
+                                smbuy_id,
+                                smfree_id,
+                                null // เพิ่ม NULL สำหรับคอลัมน์ deleted_at
+                            ])
+                        )
+                    );
+
+                    // นำเข้ารายละเอียดใหม่
+                    const insertQuery = `
+                        INSERT INTO promotiondetail (pm_id, smbuy_id, smfree_id, deleted_at) 
+                        VALUES ?
+                    `;
+
+                    connection.query(insertQuery, [newDetails], (err, results) => {
+                        if (err) {
+                            return connection.rollback(() => {
+                                console.error("ข้อผิดพลาด MySQL:", err);
+                                return res.status(500).json({ message: "error", error: err });
+                            });
+                        }
+
+                        // ยืนยันธุรกรรม
+                        connection.commit((err) => {
+                            if (err) {
+                                return connection.rollback(() => {
+                                    console.error("ข้อผิดพลาด MySQL:", err);
+                                    return res.status(500).json({ message: "error", error: err });
+                                });
+                            }
+
+                            return res.status(200).json({ message: "success", pm_id });
+                        });
+                    });
+                });
+            } else {
+                // หาก smbuy_id และ smfree_id ว่างเปล่า ให้ยืนยันธุรกรรมโดยไม่ทำการเปลี่ยนแปลง
+                connection.commit((err) => {
+                    if (err) {
+                        return connection.rollback(() => {
+                            console.error("ข้อผิดพลาด MySQL:", err);
+                            return res.status(500).json({ message: "error", error: err });
+                        });
+                    }
+
+                    return res.status(200).json({ message: "success", pm_id });
+                });
+            }
+        });
+    });
 });
 
-async function updateProductionOrderDetail(pdod_id, broken, over) {
-    const updateQuery = `
-        UPDATE productionorderdetail 
-        SET status = 3, broken = ?, \`over\` = ? 
-        WHERE pdod_id = ?`;
-
-    await connection.promise().query(updateQuery, [broken, over, pdod_id]);
-}
-
-async function Status35(pdo_id, pdo_status) {
-    const updateQuery = "UPDATE productionorder SET pdo_status = ? WHERE pdo_id = ?";
-    await connection.promise().query(updateQuery, [pdo_status, pdo_id]);
-}
 
 
-// const Status3 = async (pdo_id) => {
-//     console.log("Checking and updating status for pdo_id:", pdo_id);
-//     try {
-//         // Query to get the status of the production order and its details
-//         const query = `
-//             SELECT
-
-//                 pdo.pdo_status as pdo_status,
-//                 pdod.status as pdode_status
-//             FROM 
-//                 productionOrder as pdo
-//             LEFT JOIN 
-//                 productionOrderdetail AS pdod ON pdod.pdo_id = pdo.pdo_id
-//             WHERE  
-//                 pdo.pdo_id = ?
-//         `;
-
-//         // Fetch the results
-//         const [results] = await connection.promise().query(query, [pdo_id]);
-
-//         // Extract statuses from the results
-//         const statuses = results.map(item => item.pdode_status);
-//         console.log("statuses", statuses)
-//         // Check if all statuses are 3
-//         const allStatusesAreThree = statuses.every(status => status === '3' || status === 3);
-//         console.log("allStatusesAreThree", allStatusesAreThree)
-
-//         if (allStatusesAreThree) {
-//             // Update the status in productionOrder if all details have status 3
-//             const updateQuery = "UPDATE productionOrder SET pdo_status = 3 WHERE pdo_id = ?";
-//             await connection.promise().query(updateQuery, [pdo_id]);
-//             console.log(`Updated status to 3 for pdo_id: ${pdo_id}`);
-//         } else {
-//             // Log the current statuses if not all are 3
-//             console.log(`Statuses for pdo_id ${pdo_id}:`, statuses);
-//         }
-
-//     } catch (error) {
-//         console.error('MySQL Error:', error);
-//     }
-// };
 
 
-//เพิ่มวัตถุดิบที่ใช้ตามผลิต
-
-router.post('/addUseIngrediantnew', (req, res, next) => {
-    const ingredient_Used = req.body.ingredient_Used;
-    const ingredient_Used_detail = req.body.ingredient_Used_detail;
 
 
-    // const query = "INSERT INTO ingredient_Used (status, note) VALUES (?, ?)";
-    // connection.query(query, [ingredient_Used.status, ingredient_Used.note], (err, results) => {
-    //     return res.status(500).json({ message: "error", error: err });
-    //     }
-    // });
-});
-
-
-//เอาไว้ก่อน
-// สร้างฟังก์ชัน calculateMaterialCost คำนวณต้นทุนต่อ 1 วัตถุดิบ
-function calculateMaterialCost(quantity, price, totalQuantity) {
-    // คำนวณต้นทุนวัตถุดิบ
-    const materialCost = (quantity * (price / totalQuantity)).toFixed(2);
-
-    // ส่งค่าต้นทุนวัตถุดิบกลับ
-    return { materialCost };
-}
 
 
 module.exports = router;

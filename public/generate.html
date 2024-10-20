@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Receipt</title>
     <style>
         /* CSS สำหรับการจัดรูปแบบใบเสร็จ */
         body {
@@ -50,8 +50,8 @@
 <body>
     <div class="receipt">
         <h1>Receipt</h1>
-        <p>Date: {{ od_date }}</p>
-        <p>Order Number: {{ od_id }}</p>
+        <p id="od_date"></p>
+        <p id="od_id"></p>
         <table>
             <thead>
                 <tr>
@@ -61,30 +61,56 @@
                     <th>Total</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="receipt-items">
                 <tr>
-                    <td>{{ od_name }}</td>
-                    <td>{{ od_qty }}</td>
-                    <td>{{ od_price }}</td>
-                    <td>{{ od_sumdetail }}</td>
+                    <td id="od_name"></td>
+                    <td id="od_qty"></td>
+                    <td id="od_price"></td>
+                    <td id="od_sumdetail"></td>
                 </tr>
             </tbody>
             <tfoot>
                 <tr>
                     <td colspan="3">Total:</td>
-                    <td>{{ od_sumdetail }}</td>
+                    <td id="total"></td>
                 </tr>
                 <tr>
                     <td colspan="3">Payment Type:</td>
-                    <td>{{ od_paytype }}</td>
+                    <td id="od_paytype"></td>
                 </tr>
                 <tr>
                     <td colspan="3">Change:</td>
-                    <td>{{ od_change }}</td>
+                    <td id="od_change"></td>
                 </tr>
             </tfoot>
         </table>
     </div>
+
+    <script>
+        // Fetch the latest order data from the API
+        fetch('/latest')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Populate the receipt with fetched data
+                document.getElementById('od_date').textContent = `Date: ${data.od_date}`;
+                document.getElementById('od_id').textContent = `Order Number: ${data.od_id}`;
+                document.getElementById('od_name').textContent = data.od_name;
+                document.getElementById('od_qty').textContent = data.od_qty;
+                document.getElementById('od_price').textContent = data.od_price;
+                document.getElementById('od_sumdetail').textContent = data.od_sumdetail;
+                document.getElementById('total').textContent = data.od_sumdetail; // Assuming total is the same
+                document.getElementById('od_paytype').textContent = data.od_paytype;
+                document.getElementById('od_change').textContent = data.od_change;
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+            });
+    </script>
 </body>
 
 </html>

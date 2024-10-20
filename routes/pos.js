@@ -269,8 +269,6 @@ router.get('/pdf-viewer', (req, res) => {
 // })
 
 
-
-
 // เทสหักสต้อก คือต้องทำใหม่
 router.post('/order', async (req, res) => {
     const userId = req.session.st_id;
@@ -286,7 +284,7 @@ router.post('/order', async (req, res) => {
     ];
 
     try {
-        // Insert into order table
+        // บันทึกข้อมูลลงในตาราง order
         const orderResult = await queryPromise(
             `INSERT INTO \`order\` (od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype, 
             od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id, user_id) 
@@ -296,7 +294,7 @@ router.post('/order', async (req, res) => {
 
         const orderId = orderResult.insertId;
 
-        // Insert into orderdetail table
+        // บันทึกข้อมูลลงในตาราง orderdetail
         const orderDetailValues = [
             ...selectedItems.map(item => [orderId, item.sm_id, item.quantity, item.sm_price * item.quantity]),
             ...freeItems.map(item => [orderId, item.smfree_id, item.quantity, 0])
@@ -309,12 +307,12 @@ router.post('/order', async (req, res) => {
 
         let odde_id = orderDetailResult.insertId;
 
-        // Process items (both selected and free)
+        // ฟังก์ชันสำหรับประมวลผลรายการสินค้า
         const processItems = async (items, isFreeItems = false) => {
             for (const item of items) {
                 const sm_id = isFreeItems ? item.smfree_id : item.sm_id;
 
-                // Get salesmenu details
+                // ดึงข้อมูลรายละเอียดเมนูขาย
                 const salesMenuDetails = await queryPromise(
                     `SELECT smde_id, pd_id, qty AS sm_qty FROM salesmenudetail WHERE sm_id = ?`,
                     [sm_id]
@@ -325,7 +323,7 @@ router.post('/order', async (req, res) => {
                 const { smde_id, pd_id, sm_qty } = salesMenuDetails[0];
                 let remainingQtyToDeduct = item.quantity * sm_qty;
 
-                // Get available production order details, ordered by pdod_id (FIFO)
+                // ดึงข้อมูลรายการผลิตที่มีสินค้าพร้อมขาย เรียงตาม FIFO
                 const productionOrderDetails = await queryPromise(
                     `SELECT pdod_id, pdod_stock FROM productionorderdetail 
                     WHERE pd_id = ? AND status IN (3, 4) AND pdod_stock > 0
@@ -339,46 +337,53 @@ router.post('/order', async (req, res) => {
                     const deductQty = Math.min(remainingQtyToDeduct, pod.pdod_stock);
                     const newStock = pod.pdod_stock - deductQty;
 
-                    // Update production order detail stock
+                    // อัปเดตสต็อกในรายการผลิต
                     await queryPromise(
                         `UPDATE productionorderdetail SET pdod_stock = ? WHERE pdod_id = ?`,
                         [newStock, pod.pdod_id]
                     );
 
-                    // Insert into orderdetailsalesmenu
-                    await queryPromise(
-                        `INSERT INTO orderdetailsalesmenu (odde_id, smde_id, pdod_id, qty) 
-                        VALUES (?, ?, ?, ?)`,
-                        [odde_id, smde_id, pod.pdod_id, deductQty]
-                    );
-
-                    // Insert into promotionorderdetail (only for non-free items)
-                    await queryPromise(
-                        `INSERT INTO promotionorderdetail (pdod_id, odde_id, qty) 
+                    if (isFreeItems) {
+                        // บันทึกข้อมูลของแถมลงในตาราง promotionorderdetail
+                        await queryPromise(
+                            `INSERT INTO promotionorderdetail (pdod_id, odde_id, qty) 
                             VALUES (?, ?, ?)`,
-                        [pod.pdod_id, odde_id, deductQty]
-                    );
-
+                            [pod.pdod_id, odde_id, deductQty]
+                        );
+                    } else {
+                        // บันทึกข้อมูลสินค้าปกติลงในตาราง orderdetailsalesmenu
+                        await queryPromise(
+                            `INSERT INTO orderdetailsalesmenu (odde_id, smde_id, pdod_id, qty) 
+                            VALUES (?, ?, ?, ?)`,
+                            [odde_id, smde_id, pod.pdod_id, deductQty]
+                        );
+                    }
 
                     remainingQtyToDeduct -= deductQty;
                 }
 
                 if (remainingQtyToDeduct > 0) {
-                    throw new Error(`Insufficient stock for product ID: ${pd_id}`);
+                    throw new Error(`สินค้าไม่เพียงพอสำหรับรหัสสินค้า: ${pd_id}`);
                 }
 
                 odde_id++;
             }
         };
 
-        // Process selected items and free items
-        await processItems(selectedItems);
+        // ประมวลผลสินค้าปกติ
+        await processItems(selectedItems, false);
+        // ประมวลผลสินค้าแถม
         await processItems(freeItems, true);
+        // นับสต็อคล่าสุดหลังจากประมวลผลคำสั่งซื้อ
+        const updatedStock = await countCurrentStock();
 
-        res.status(200).json({ message: "Order processed successfully", orderId });
-    } catch (error) {
-        console.error("Error processing order:", error);
-        res.status(500).json({ message: "Error processing order", error: error.message });
+        res.status(200).json({ 
+            message: "ประมวลผลคำสั่งซื้อเสร็จสมบูรณ์", 
+            orderId,
+            currentStock: updatedStock
+        });    } catch (error) {
+        console.error("เกิดข้อผิดพลาดในการประมวลผลคำสั่งซื้อ:", error);
+        res.status(500).json({ message: "เกิดข้อผิดพลาดในการประมวลผลคำสั่งซื้อ", error: error.message });
     }
 });
 
@@ -395,6 +400,59 @@ const queryPromise = (query, params) => {
         });
     });
 };
+
+// ฟังก์ชันสำหรับนับจำนวนสต็อคปัจจุบัน
+async function countCurrentStock() {
+    try {
+        const stockResult = await queryPromise(`
+            SELECT pd_id, SUM(pdod_stock) as total_stock
+            FROM productionorderdetail
+            WHERE status IN (3, 4)
+            GROUP BY pd_id
+        `);
+        return stockResult.reduce((acc, item) => {
+            acc[item.pd_id] = item.total_stock;
+            return acc;
+        }, {});
+    } catch (error) {
+        console.error("เกิดข้อผิดพลาดในการนับสต็อค:", error);
+        throw error;
+    }
+}
+
+// ฟังก์ชันสำหรับนับจำนวนสต็อคปัจจุบันและดึงชื่อสินค้า
+async function countCurrentStockWithNames() {
+    try {
+        const stockResult = await queryPromise(`
+            SELECT p.pd_id, p.pd_name, SUM(pod.pdod_stock) as total_stock
+            FROM productionorderdetail pod
+            JOIN products p ON pod.pd_id = p.pd_id
+            WHERE pod.status IN (3, 4)
+            GROUP BY p.pd_id, p.pd_name
+        `);
+        return stockResult.reduce((acc, item) => {
+            acc[item.pd_id] = {
+                pd_name: item.pd_name,
+                total_stock: item.total_stock
+            };
+            return acc;
+        }, {});
+    } catch (error) {
+        console.error("เกิดข้อผิดพลาดในการนับสต็อคและดึงชื่อสินค้า:", error);
+        throw error;
+    }
+}
+
+// API เส้นใหม่สำหรับส่งข้อมูลสต็อคปัจจุบันพร้อมชื่อสินค้า
+router.get('/countstock', async (req, res) => {
+    try {
+        const currentStockWithNames = await countCurrentStockWithNames();
+        res.status(200).json(currentStockWithNames);
+    } catch (error) {
+        res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูลสต็อคและชื่อสินค้า", error: error.message });
+    }
+});
+
 
 
 

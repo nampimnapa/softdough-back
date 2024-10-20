@@ -48,12 +48,9 @@ router.get('/small/:delitype?', async (req, res, next) => {
 router.get('/sm', async (req, res, next) => {
     try {
         query = `
-        SELECT sm.*, smt.*, smd.*, p.pd_name
+        SELECT sm.sm_id,sm.sm_name,sm.sm_price,sm.status,sm.fix,sm.picture, smt.smt_id,smt.smt_name, smt.qty_per_unit
         FROM salesmenutype smt 
-        JOIN salesmenu sm ON sm.smt_id = smt.smt_id 
-        JOIN salesmenudetail smd ON sm.sm_id = smd.sm_id 
-        LEFT JOIN products p ON smd.pd_id = p.pd_id 
-        WHERE smd.deleted_at IS NULL`;
+        JOIN salesmenu sm ON sm.smt_id = smt.smt_id`;
 
         connection.query(query, (err, results) => {
             if (err) {
@@ -110,7 +107,7 @@ router.get('/sm/:sm_id', (req, res, next) => {
     const sm_id = Number(req.params.sm_id);
 
     var query = `
-    SELECT sm.*, smt.*, smd.*, p.pd_name,pc.pdc_name,
+    SELECT smd.smde_id, p.pd_name,pc.pdc_name, p.picture, p.pd_id,
            CASE 
                WHEN sm.fix = '2' THEN p.pd_name 
                ELSE NULL 

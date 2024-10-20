@@ -1,7 +1,7 @@
 'use strict';
 module.exports = {
     async up(queryInterface, Sequelize) {
-        await queryInterface.createTable('promotionOrderDetail', {
+        await queryInterface.createTable('promotionorderdetail', {
             pmod_id : {
                 allowNull: false,
                 autoIncrement: true,
@@ -21,7 +21,7 @@ module.exports = {
                 type: Sequelize.INTEGER,
                 allowNull: false,
                 references: {
-                    model: 'productionOrderdetail',
+                    model: 'productionorderdetail',
                     key: 'pdod_id'
                 }
             },
@@ -33,6 +33,6 @@ module.exports = {
         });
     },
     async down(queryInterface, Sequelize) {
-        await queryInterface.dropTable('promotionOrderDetail');
+        await queryInterface.dropTable('promotionorderdetail');
     }
 };

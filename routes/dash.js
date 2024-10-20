@@ -27,8 +27,8 @@ async function getIngredientUsedDetails(req, res) {
             iup.created_at,
             pc.pdc_name,
             (iup.qtyusesum * ild.price) / (ild.qtypurchased * i.qty_per_unit) AS costingredient
-        FROM ingredient_Used_Pro iup
-        JOIN productionOrderdetail pod ON iup.pdod_id = pod.pdod_id  
+        FROM ingredient_used_pro iup
+        JOIN productionorderdetail pod ON iup.pdod_id = pod.pdod_id  
         JOIN products p ON pod.pd_id = p.pd_id     
         LEFT JOIN productcategory pc ON pc.pdc_id = p.pdc_id                                         
         LEFT JOIN recipe r ON r.pd_id = p.pd_id       
@@ -226,7 +226,7 @@ router.get('/readalldash', (req, res, next) => {
     FROM 
         expenses AS ep
     JOIN 
-        expensesType AS ept ON ept.ept_id = ep.ept_id 
+        expensestype AS ept ON ept.ept_id = ep.ept_id 
     WHERE 
         ep.deleted_at IS NULL 
         AND ep.ep_status = 2 

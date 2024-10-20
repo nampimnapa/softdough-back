@@ -10,7 +10,7 @@ const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder ,isAdm
 
 
 router.get('/unit',(req, res, next) => {
-    var query = 'select *from unit where type="2"'
+    var query = 'select * from unit where type="2"'
     connection.query(query, (err, results) => {
         if (!err) {
             return res.status(200).json(results);
@@ -22,7 +22,7 @@ router.get('/unit',(req, res, next) => {
 
 router.post('/addtype', (req, res, next) => {
     let type = req.body;
-    query = "insert into salesMenuType (smt_name,un_id,qty_per_unit) values(?,?,?)";
+    query = "insert into salesmenutype (smt_name,un_id,qty_per_unit) values(?,?,?)";
     connection.query(query, [type.smt_name, type.un_id, type.qty_per_unit], (err, results) => {
         if (!err) {
             return res.status(200).json({ message: "success" });
@@ -34,7 +34,7 @@ router.post('/addtype', (req, res, next) => {
 })
 
 router.get('/readsmt', (req, res, next) => {
-    var query = 'select *from salesmenuType'
+    var query = 'select * from salesmenutype'
     connection.query(query, (err, results) => {
         if (!err) {
             return res.status(200).json(results);
@@ -49,7 +49,7 @@ router.get('/readsmt', (req, res, next) => {
 router.patch('/updatesmt/:smt_id', (req, res, next) => {
     const smt_id = req.params.smt_id;
     const sm = req.body;
-    var query = "UPDATE salesmenuType SET smt_name=?,un_id=?,qty_per_unit=? WHERE smt_id=?";
+    var query = "UPDATE salesmenutype SET smt_name=?,un_id=?,qty_per_unit=? WHERE smt_id=?";
     connection.query(query, [sm.smt_name,sm.un_id,sm.qty_per_unit, smt_id], (err, results) => {
         if (!err) {
             if (results.affectedRows === 0) {
@@ -92,9 +92,9 @@ router.get('/sm/:sm_id',(req, res, next) => {
     const sm_id = Number(req.params.sm_id);
 
     var query = `SELECT sm.*, smt.*, smd.* 
-    FROM salesMenuType smt 
-    JOIN salesMenu sm ON sm.smt_id = smt.smt_id 
-    JOIN salesMenudetail smd ON sm.sm_id = smd.sm_id 
+    FROM salesmenutype smt 
+    JOIN salesmenu sm ON sm.smt_id = smt.smt_id 
+    JOIN salesmenudetail smd ON sm.sm_id = smd.sm_id 
     WHERE sm.sm_id = ?`
     connection.query(query, sm_id, (err, results) => {
         if (!err) {
@@ -108,7 +108,7 @@ router.get('/sm/:sm_id',(req, res, next) => {
 router.get('/smt/:id', (req, res, next) => {
     const smt_id = Number(req.params.id);
 
-    var query = `select *from salesmenuType where smt_id=?`
+    var query = `select * from salesmenutype where smt_id=?`
     connection.query(query, smt_id, (err, results) => {
         if (!err) {
             return res.status(200).json(results);
@@ -172,9 +172,9 @@ router.get('/smset/:sm_id', async (req, res, next) => {
     const sm_id = Number(req.params.sm_id);
     try {
         var query = `SELECT sm.*, smt.*, smd.* 
-    FROM salesMenuType smt 
-    JOIN salesMenu sm ON sm.smt_id = smt.smt_id 
-    JOIN salesMenudetail smd ON sm.sm_id = smd.sm_id 
+    FROM salesmenutype smt 
+    JOIN salesmenu sm ON sm.smt_id = smt.smt_id 
+    JOIN salesmenudetail smd ON sm.sm_id = smd.sm_id 
     WHERE sm.sm_id = ?`;
 
         connection.query(query, sm_id, (err, results) => {
@@ -229,8 +229,8 @@ router.get('/smset/:sm_id', async (req, res, next) => {
 router.get('/small', async (req, res, next) => {
     try {
         var query = `SELECT sm.* , smt.smt_name
-            FROM salesMenuType smt 
-            JOIN salesMenu sm ON sm.smt_id = smt.smt_id`;
+            FROM salesmenutype smt 
+            JOIN salesmenu sm ON sm.smt_id = smt.smt_id`;
 
         connection.query(query, (err, results) => {
             if (err) {
@@ -238,16 +238,12 @@ router.get('/small', async (req, res, next) => {
                 return res.status(500).json({ message: 'Error retrieving sm', error: err });
             }
 
-            if (results.length === 0) {
-                return res.status(404).json({ message: 'sm not found' });
-            }
-
             // Loop through the results to modify each result as needed
             results.forEach(result => {
                 // If the product contains picture data
                 if (result.picture) {
                     // Include the base64-encoded picture data in the response
-                    result.picture = `data:image/jpeg;base64,${result.picture}`;
+                    result.picture = `${result.picture}`;
                 }
             });
 
@@ -413,7 +409,7 @@ router.post('/addsm', async (req, res) => {
                 return res.status(500).json({ message: 'Transaction start error', error: err });
             }
 
-            connection.query('INSERT INTO salesMenu SET ?', salesmenuWithPicture, (err, salesmenuResult) => {
+            connection.query('INSERT INTO salesmenu SET ?', salesmenuWithPicture, (err, salesmenuResult) => {
                 if (err) {
                     console.error('Error inserting salesmenu:', err);
                     connection.rollback(() => {
@@ -437,7 +433,7 @@ router.post('/addsm', async (req, res) => {
                 if (salesmenudetailar && Array.isArray(salesmenudetailar) && salesmenuId) {
                     if (selltype === "1" || selltype === 1) {
                         const salesmenudetail1 = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, detail.qty, null]);
-                        const salesmenudetailQuery = `INSERT INTO salesMenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
+                        const salesmenudetailQuery = `INSERT INTO salesmenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
                         connection.query(salesmenudetailQuery, [salesmenudetail1], (err, detailResults) => {
                             if (err) {
                                 connection.rollback(() => {
@@ -457,7 +453,7 @@ router.post('/addsm', async (req, res) => {
                     } else if (selltype === "2" || selltype === 2) {
                         console.log("Type 2", salesmenudetailar)
                         const salesmenudetailWithNullQty = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, null, null]); // กำหนดค่า qty เป็น null ในแต่ละรายการ
-                        const salesmenudetailQuery = `INSERT INTO salesMenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
+                        const salesmenudetailQuery = `INSERT INTO salesmenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
                         connection.query(salesmenudetailQuery, [salesmenudetailWithNullQty], (err, detailResults) => {
                             if (err) {
                                 connection.rollback(() => {
@@ -554,7 +550,7 @@ router.patch('/editsm/:sm_id', upload.single('picture'),isAdmin, async (req, res
                 return; // เพิ่ม return เพื่อหยุดการทำงานของฟังก์ชัน
             }
             ///////////////////////////////
-            connection.query('UPDATE salesMenu SET ?,updated_at = CURRENT_TIMESTAMP  WHERE sm_id = ?', [salesmenuWithPicture, sm_id], (err, salesMenuResult) => {
+            connection.query('UPDATE salesmenu SET ?,updated_at = CURRENT_TIMESTAMP  WHERE sm_id = ?', [salesmenuWithPicture, sm_id], (err, salesMenuResult) => {
                 if (err) {
                     console.error('Error updating salesMenu:', err);
                     connection.rollback(() => {
@@ -576,7 +572,7 @@ router.patch('/editsm/:sm_id', upload.single('picture'),isAdmin, async (req, res
                         const updateData = [];
                         const insertData = [];
                         const deleteData = [];
-                        const query = `SELECT salesMenudetail.pd_id FROM salesMenudetail WHERE sm_id = ?`;
+                        const query = `SELECT salesmenudetail.pd_id FROM salesmenudetail WHERE sm_id = ?`;
 
                         let pdidQ = salesmenudetail.map(detail => detail.pd_id).filter(id => id !== undefined);
                         console.log(pdidQ);
@@ -643,7 +639,7 @@ router.patch('/editsm/:sm_id', upload.single('picture'),isAdmin, async (req, res
 
                             if (deleteData.length > 0) {
                                 // const deleteQuery = "DELETE FROM Ingredient_lot_detail WHERE ind_id = ? AND indl_id = ?";
-                                const deleteQuery = "UPDATE salesMenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND sm_id = ?";
+                                const deleteQuery = "UPDATE salesmenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND sm_id = ?";
                                 deleteData.forEach(detail => {
                                     const deleteValues = [detail, sm_id];
                                     console.log(deleteValues)
@@ -667,7 +663,7 @@ router.patch('/editsm/:sm_id', upload.single('picture'),isAdmin, async (req, res
                                 console.log("database inn", insertData);
                                 console.log("indl id", sm_id);
 
-                                const insertQuery = "INSERT INTO salesMenudetail (sm_id, pd_id, qty, deleted_at) VALUES (?, ?, ?, null)";
+                                const insertQuery = "INSERT INTO salesmenudetail (sm_id, pd_id, qty, deleted_at) VALUES (?, ?, ?, null)";
 
                                 const flattenedInsertData = insertData.flat();
 
@@ -702,7 +698,7 @@ router.patch('/editsm/:sm_id', upload.single('picture'),isAdmin, async (req, res
                             if (updateData.length > 0) {
                                 console.log("database uppp", updateData)
                                 // const updateQuery = "UPDATE Ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ? WHERE ind_id = ? AND indl_id = ?";
-                                const updateQuery = "UPDATE salesMenudetail SET qty = ?, deleted_at = NULL WHERE pd_id = ? AND sm_id = ?";
+                                const updateQuery = "UPDATE salesmenudetail SET qty = ?, deleted_at = NULL WHERE pd_id = ? AND sm_id = ?";
                                 //การใช้ flat() จะช่วยให้คุณได้ array ที่ flatten แล้วที่มี object ภายใน ซึ่งจะทำให้ง่ายต่อการทำงานกับข้อมูลในลำดับถัดไป.
                                 const flattenedUpdateData = updateData.flat();
                                 console.log("flattenedUpdateData", flattenedUpdateData)
@@ -735,7 +731,7 @@ router.patch('/editsm/:sm_id', upload.single('picture'),isAdmin, async (req, res
                         const updateData = [];
                         const insertData = [];
                         const deleteData = [];
-                        const query = `SELECT salesMenudetail.pd_id FROM salesMenudetail WHERE sm_id = ?`;
+                        const query = `SELECT salesmenudetail.pd_id FROM salesmenudetail WHERE sm_id = ?`;
 
                         let pdidQ = salesmenudetail.map(detail => detail.pd_id).filter(id => id !== undefined);
                         console.log(pdidQ);
@@ -802,7 +798,7 @@ router.patch('/editsm/:sm_id', upload.single('picture'),isAdmin, async (req, res
 
                             if (deleteData.length > 0) {
                                 // const deleteQuery = "DELETE FROM Ingredient_lot_detail WHERE ind_id = ? AND indl_id = ?";
-                                const deleteQuery = "UPDATE salesMenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND sm_id = ?";
+                                const deleteQuery = "UPDATE salesmenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND sm_id = ?";
                                 deleteData.forEach(detail => {
                                     const deleteValues = [detail, sm_id];
                                     console.log(deleteValues)
@@ -826,7 +822,7 @@ router.patch('/editsm/:sm_id', upload.single('picture'),isAdmin, async (req, res
                                 console.log("database inn", insertData)
                                 console.log("indl id", sm_id)
 
-                                const insertQuery = "INSERT INTO salesMenudetail (sm_id, pd_id, qty,deleted_at) VALUES (?,?,?,?)";
+                                const insertQuery = "INSERT INTO salesmenudetail (sm_id, pd_id, qty,deleted_at) VALUES (?,?,?,?)";
 
                                 const flattenedineData = insertData.flat();
 
@@ -859,7 +855,7 @@ router.patch('/editsm/:sm_id', upload.single('picture'),isAdmin, async (req, res
                             if (updateData.length > 0) {
                                 console.log("database uppp", updateData)
                                 // const updateQuery = "UPDATE Ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ? WHERE ind_id = ? AND indl_id = ?";
-                                const updateQuery = "UPDATE salesMenudetail SET qty = ?, deleted_at = NULL WHERE pd_id = ? AND sm_id = ?";
+                                const updateQuery = "UPDATE salesmenudetail SET qty = ?, deleted_at = NULL WHERE pd_id = ? AND sm_id = ?";
                                 //การใช้ flat() จะช่วยให้คุณได้ array ที่ flatten แล้วที่มี object ภายใน ซึ่งจะทำให้ง่ายต่อการทำงานกับข้อมูลในลำดับถัดไป.
                                 const flattenedUpdateData = updateData.flat();
                                 console.log("flattenedUpdateData", flattenedUpdateData)
@@ -1027,8 +1023,8 @@ router.get('/readsmfromt', (req, res, next) => {
     if (smt_ids.length > 0) {
         const query = `
             SELECT *
-            FROM salesMenuType smt 
-            JOIN salesMenu sm ON sm.smt_id = smt.smt_id 
+            FROM salesmenutype smt 
+            JOIN salesmenu sm ON sm.smt_id = smt.smt_id 
             WHERE sm.smt_id IN (?)
         `;
 

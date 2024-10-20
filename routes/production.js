@@ -213,13 +213,13 @@ router.get('/readfree', (req, res, next) => {
     JOIN 
         promotiondetail pd ON p.pm_id = pd.pm_id
     JOIN 
-        salesMenu smbuy ON pd.smbuy_id = smbuy.sm_id
+        salesmenu smbuy ON pd.smbuy_id = smbuy.sm_id
     JOIN 
-        salesMenu smfree ON pd.smfree_id = smfree.sm_id
+        salesmenu smfree ON pd.smfree_id = smfree.sm_id
     JOIN 
-        salesMenuType smbuytype ON smbuy.smt_id = smbuytype.smt_id
+        salesmenutype smbuytype ON smbuy.smt_id = smbuytype.smt_id
     JOIN 
-        salesMenuType smfreetype ON smfree.smt_id = smfreetype.smt_id;
+        salesmenutype smfreetype ON smfree.smt_id = smfreetype.smt_id;
 
     `;
 
@@ -280,13 +280,13 @@ router.get('/readfreedetail/:pm_id', async (req, res, next) => {
     JOIN 
         promotiondetail pd ON p.pm_id = pd.pm_id
     JOIN 
-        salesMenu smbuy ON pd.smbuy_id = smbuy.sm_id
+        salesmenu smbuy ON pd.smbuy_id = smbuy.sm_id
     JOIN 
-        salesMenu smfree ON pd.smfree_id = smfree.sm_id
+        salesmenu smfree ON pd.smfree_id = smfree.sm_id
     JOIN 
-        salesMenuType smbuytype ON smbuy.smt_id = smbuytype.smt_id
+        salesmenutype smbuytype ON smbuy.smt_id = smbuytype.smt_id
     JOIN 
-        salesMenuType smfreetype ON smfree.smt_id = smfreetype.smt_id
+        salesmenutype smfreetype ON smfree.smt_id = smfreetype.smt_id
     WHERE 
         p.pm_id = ? AND pd.deleted_at IS NULL;
     
@@ -532,7 +532,32 @@ router.put('/updatefree', (req, res, next) => {
 });
 
 
+router.get('/readall', async (req, res, next) => {
+    const query = `
+    SELECT
+        productionorder.*,
+        CONCAT('PD', LPAD(pdo_id, 7, '0')) AS pdo_id_name,
+        DATE_FORMAT(updated_at, '%Y-%m-%d') AS updated_at,
+        pdo_status
+    FROM 
+        productionorder 
+    WHERE 
+        pdo_status != 0
+    ORDER BY updated_at DESC   
+    `;
 
+    try {
+        const [results] = await connection.promise().query(query);
+
+            return res.status(200).json(results);
+    } catch (error) {
+        console.error("Database Query Error:", error);
+        return res.status(500).json({
+            message: "An error occurred while fetching production orders",
+            error: error.message
+        });
+    }
+});
 
 
 

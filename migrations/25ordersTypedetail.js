@@ -1,7 +1,7 @@
 'use strict';
 module.exports = {
     async up(queryInterface, Sequelize) {
-        await queryInterface.createTable('ordersTypedetail', {
+        await queryInterface.createTable('orderstypedetail', {
             odto_id : {
                 allowNull: false,
                 autoIncrement: true,
@@ -12,7 +12,7 @@ module.exports = {
                 type: Sequelize.INTEGER,
                 allowNull: false,
                 references: {
-                    model: 'salesMenu',
+                    model: 'salesmenu',
                     key: 'sm_id'
                 }
             },
@@ -20,7 +20,7 @@ module.exports = {
                 type: Sequelize.INTEGER,
                 allowNull: false,
                 references: {
-                    model: 'ordersType',
+                    model: 'orderstype',
                     key: 'odt_id'
                 }
             },
@@ -47,6 +47,6 @@ module.exports = {
         });
     },
     async down(queryInterface, Sequelize) {
-        await queryInterface.dropTable('ordersTypedetail');
+        await queryInterface.dropTable('orderstypedetail');
     }
 };

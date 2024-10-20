@@ -18,7 +18,7 @@ router.post('/add',(req,res,next)=>{
 })
 
 router.get('/read',(req,res,next)=>{ 
-    var query = 'select *from owner'
+    var query = 'select * from owner'
     connection.query(query,(err,results)=>{
         if (!err) {
             return res.status(200).json(results);

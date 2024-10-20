@@ -377,11 +377,12 @@ router.post('/order', async (req, res) => {
         // นับสต็อคล่าสุดหลังจากประมวลผลคำสั่งซื้อ
         const updatedStock = await countCurrentStock();
 
-        res.status(200).json({ 
-            message: "ประมวลผลคำสั่งซื้อเสร็จสมบูรณ์", 
+        res.status(200).json({
+            message: "ประมวลผลคำสั่งซื้อเสร็จสมบูรณ์",
             orderId,
             currentStock: updatedStock
-        });    } catch (error) {
+        });
+    } catch (error) {
         console.error("เกิดข้อผิดพลาดในการประมวลผลคำสั่งซื้อ:", error);
         res.status(500).json({ message: "เกิดข้อผิดพลาดในการประมวลผลคำสั่งซื้อ", error: error.message });
     }
@@ -424,19 +425,20 @@ async function countCurrentStockWithNamesAndExpiry() {
     try {
         const stockResult = await queryPromise(`
             SELECT 
-                p.pd_id, 
-                p.pd_name, 
+                p.pd_id,
+                p.pd_name,
+                p.picture,  -- Added picture field
                 pod.pdod_id,
                 pod.pdod_stock,
-                DATE(pod.created_at) AS created_date,  -- แสดงเฉพาะวันที่ ไม่มีเวลา
+                DATE(pod.created_at) AS created_date,
                 r.qtylifetime,
-                DATE(DATE_ADD(pod.created_at, INTERVAL r.qtylifetime DAY)) AS exp_date  -- แสดงเฉพาะวันที่ ไม่มีเวลา
+                DATE(DATE_ADD(pod.created_at, INTERVAL r.qtylifetime DAY)) AS exp_date
             FROM productionorderdetail pod
             JOIN products p ON pod.pd_id = p.pd_id
             JOIN recipe r ON p.pd_id = r.pd_id
             WHERE pod.status IN (3, 4) 
             AND pod.pdod_stock > 0 
-            AND DATE(DATE_ADD(pod.created_at, INTERVAL r.qtylifetime DAY)) >= CURDATE()  -- เงื่อนไขใหม่: exp_date ต้องไม่เลยวันนี้
+            AND DATE(DATE_ADD(pod.created_at, INTERVAL r.qtylifetime DAY)) >= CURDATE()
             ORDER BY p.pd_id, pod.created_at
         `);
 
@@ -445,6 +447,7 @@ async function countCurrentStockWithNamesAndExpiry() {
                 acc[item.pd_id] = {
                     pd_id: item.pd_id,
                     pd_name: item.pd_name,
+                    picture: item.picture,  // Added picture to the result
                     total_stock: 0,
                     detailstock: []
                 };
@@ -453,15 +456,15 @@ async function countCurrentStockWithNamesAndExpiry() {
             acc[item.pd_id].detailstock.push({
                 pdod_id: item.pdod_id,
                 pdod_stock: item.pdod_stock,
-                created_date: item.created_date,  // เฉพาะวันที่
-                exp_date: item.exp_date  // เฉพาะวันที่
+                created_date: item.created_date,
+                exp_date: item.exp_date
             });
             return acc;
         }, {});
 
         return Object.values(result);
     } catch (error) {
-        console.error("เกิดข้อผิดพลาดในการนับสต็อค ดึงชื่อสินค้า และคำนวณวันหมดอายุ:", error);
+        console.error("เกิดข้อผิดพลาดในการนับสต็อค ดึงชื่อสินค้า รูปภาพ และคำนวณวันหมดอายุ:", error);
         throw error;
     }
 }

@@ -62,10 +62,10 @@ const ProductCategory = sequelize.define('productCategory', {
 });
 
 const Product = sequelize.define('Product', {
-  pd_id: { 
-    type: DataTypes.INTEGER, 
-    primaryKey: true, 
-    autoIncrement: true 
+  pd_id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
   },
   pd_name: DataTypes.STRING(255),
   pd_qtyminimum: DataTypes.INTEGER,
@@ -131,6 +131,53 @@ const OrdersType = sequelize.define('OrdersType', {
 }, {
   tableName: 'orderstype',
   timestamps: false
+});
+
+const salesmenudetail = sequelize.define('salesmenudetail', {
+  smde_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  sm_id: DataTypes.INTEGER,
+  pd_id: DataTypes.INTEGER,
+  qty: DataTypes.INTEGER,
+  created_at: {
+    type: DataTypes.DATE,
+    defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+  },
+  updated_at: {
+    type: DataTypes.DATE,
+    defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+  }
+}, {
+  tableName: 'salesmenudetail'
+});
+
+
+const recipe = sequelize.define('recipe', {
+  rc_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  qtylifetime: DataTypes.INTEGER,
+  produced_qty: DataTypes.INTEGER,
+  pd_id: DataTypes.INTEGER,
+  un_id: DataTypes.INTEGER,
+}, {
+  tableName: 'recipe',
+  timestamps: false
+});
+
+const recipedetail = sequelize.define('recipedetail', {
+  rcd_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  ingredients_qty: DataTypes.FLOAT,
+  rc_id: DataTypes.INTEGER,
+  un_id: DataTypes.INTEGER,
+  ind_id: DataTypes.INTEGER,
+  created_at: {
+    type: DataTypes.DATE,
+    defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+  },
+  updated_at: {
+    type: DataTypes.DATE,
+    defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+  }
+}, {
+  tableName: 'recipedetail'
 });
 
 async function seedDatabase() {
@@ -235,6 +282,55 @@ async function seedDatabase() {
         { sm_name: 'ดิปช็อก', smt_id: 3, sm_price: 15, status: 'c', fix: '1', picture: 'images/logo.svg' }
       ];
       await SalesMenu.bulkCreate(salesMenus, { transaction: t });
+    }
+
+
+    const salesMenusDe = await salesmenudetail.count({ transaction: t });
+    if (salesMenusDe === 0) {
+      const salesMenusDes = [
+        { smde_id: 1, sm_id: 1, pd_id: 1, qty: 6, created_at: '2024-10-18 01:40:44', updated_at: '2024-10-18 01:40:44' },
+        { smde_id: 2, sm_id: 2, pd_id: 2, qty: 6, created_at: '2024-10-18 15:14:55', updated_at: '2024-10-18 15:14:55' },
+        { smde_id: 3, sm_id: 3, pd_id: 3, qty: 1, created_at: '2024-10-18 18:30:20', updated_at: '2024-10-18 18:30:20' },
+        { smde_id: 4, sm_id: 4, pd_id: 6, qty: 1, created_at: '2024-10-18 18:42:43', updated_at: '2024-10-18 18:42:43' },
+        { smde_id: 5, sm_id: 5, pd_id: 4, qty: 1, created_at: '2024-10-18 18:43:06', updated_at: '2024-10-18 18:43:06' },
+        { smde_id: 6, sm_id: 6, pd_id: 5, qty: 1, created_at: '2024-10-18 18:43:29', updated_at: '2024-10-18 18:43:29' }
+      ];
+      await salesmenudetail.bulkCreate(salesMenusDes, { transaction: t });
+    }
+
+    const recipes = await recipe.count({ transaction: t });
+    if (recipes === 0) {
+      const recipess = [
+        { rc_id: 1, qtylifetime: 4, produced_qty: 30, pd_id: 1, un_id: 13 },
+        { rc_id: 2, qtylifetime: 4, produced_qty: 30, pd_id: 2, un_id: 13 },
+        { rc_id: 3, qtylifetime: 5, produced_qty: 20, pd_id: 3, un_id: 14 },
+        { rc_id: 4, qtylifetime: 5, produced_qty: 20, pd_id: 4, un_id: 14 },
+        { rc_id: 5, qtylifetime: 5, produced_qty: 20, pd_id: 5, un_id: 14 },
+        { rc_id: 6, qtylifetime: 2, produced_qty: 20, pd_id: 6, un_id: 14 }
+      ];
+      await recipe.bulkCreate(recipess, { transaction: t });
+    }
+
+    const recipedetails = await recipedetail.count({ transaction: t });
+    if (recipedetails === 0) {
+      const recipedetailss = [
+        { rcd_id: 1, ingredients_qty: 100, rc_id: 1, un_id: 9, ind_id: 4, created_at: '2024-10-18 01:37:09', updated_at: '2024-10-18 01:37:09' },
+        { rcd_id: 2, ingredients_qty: 500, rc_id: 1, un_id: 3, ind_id: 5, created_at: '2024-10-18 01:37:09', updated_at: '2024-10-18 01:37:09' },
+        { rcd_id: 3, ingredients_qty: 500, rc_id: 1, un_id: 9, ind_id: 3, created_at: '2024-10-18 01:37:09', updated_at: '2024-10-18 01:37:09' },
+        { rcd_id: 4, ingredients_qty: 1000, rc_id: 1, un_id: 3, ind_id: 1, created_at: '2024-10-18 01:37:09', updated_at: '2024-10-18 01:37:09' },
+        { rcd_id: 5, ingredients_qty: 500, rc_id: 2, un_id: 9, ind_id: 3, created_at: '2024-10-18 01:38:37', updated_at: '2024-10-18 01:38:37' },
+        { rcd_id: 6, ingredients_qty: 1000, rc_id: 2, un_id: 3, ind_id: 2, created_at: '2024-10-18 01:38:37', updated_at: '2024-10-18 01:38:37' },
+        { rcd_id: 7, ingredients_qty: 300, rc_id: 2, un_id: 3, ind_id: 5, created_at: '2024-10-18 01:38:37', updated_at: '2024-10-18 01:38:37' },
+        { rcd_id: 8, ingredients_qty: 2000, rc_id: 3, un_id: 9, ind_id: 3, created_at: '2024-10-18 18:26:36', updated_at: '2024-10-18 18:26:36' },
+        { rcd_id: 9, ingredients_qty: 500, rc_id: 3, un_id: 3, ind_id: 5, created_at: '2024-10-18 18:26:36', updated_at: '2024-10-18 18:26:36' },
+        { rcd_id: 10, ingredients_qty: 2000, rc_id: 4, un_id: 9, ind_id: 3, created_at: '2024-10-18 18:27:13', updated_at: '2024-10-18 18:27:13' },
+        { rcd_id: 11, ingredients_qty: 500, rc_id: 4, un_id: 3, ind_id: 5, created_at: '2024-10-18 18:27:13', updated_at: '2024-10-18 18:27:13' },
+        { rcd_id: 12, ingredients_qty: 2000, rc_id: 5, un_id: 9, ind_id: 3, created_at: '2024-10-18 18:28:38', updated_at: '2024-10-18 18:28:38' },
+        { rcd_id: 13, ingredients_qty: 500, rc_id: 5, un_id: 3, ind_id: 5, created_at: '2024-10-18 18:28:38', updated_at: '2024-10-18 18:28:38' },
+        { rcd_id: 14, ingredients_qty: 2000, rc_id: 6, un_id: 9, ind_id: 3, created_at: '2024-10-18 18:29:07', updated_at: '2024-10-18 18:29:07' },
+        { rcd_id: 15, ingredients_qty: 500, rc_id: 6, un_id: 3, ind_id: 5, created_at: '2024-10-18 18:29:07', updated_at: '2024-10-18 18:29:07' }
+      ];
+      await recipedetail.bulkCreate(recipedetailss, { transaction: t });
     }
 
     // 8. Shop

@@ -6,7 +6,7 @@ const frontUrl = process.env.FRONT;
 const setupSocket = (server) => {
   const io = socketIo(server, {
     cors: {
-      origin: [frontUrl, 'http://localhost:3001', 'http://localhost:3000'],
+      origin: [frontUrl, 'http://localhost:3000'],
       methods: ["GET", "POST"],
       allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,

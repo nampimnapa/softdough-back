@@ -133,66 +133,76 @@ router.patch('/update/:id', (req, res, next) => {
 router.post('/addfree', (req, res, next) => {
     const { pm_name, pm_datestart, pm_dateend, promotiondetail } = req.body;
 
-    // Start the transaction
-    connection.beginTransaction((err) => {
+    // ดึง connection จาก pool
+    connection.getConnection((err, connection) => {
         if (err) {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
+            console.error("Error getting MySQL connection:", err);
+            return res.status(500).json({ message: "Error getting database connection", error: err });
         }
 
-        const query = "INSERT INTO promotion (pm_name, pm_datestart, pm_dateend, deleted_at) VALUES (?,?,?,null)";
-
-        connection.query(query, [pm_name, pm_datestart, pm_dateend], (err, results) => {
+        connection.beginTransaction((err) => {
             if (err) {
-                return connection.rollback(() => {
-                    console.error("MySQL Error:", err);
-                    return res.status(500).json({ message: "error", error: err });
-                });
+                connection.release();
+                console.error("MySQL Error:", err);
+                return res.status(500).json({ message: "Error starting transaction", error: err });
             }
 
-            const pm_id = results.insertId;
-
-            // Flatten the arrays into pairs
-            const values = promotiondetail.flatMap(detail =>
-                detail.smbuy_id.flatMap(smbuy_id =>
-                    detail.smfree_id.map(smfree_id => [
-                        pm_id,
-                        smbuy_id,
-                        smfree_id,
-                        null
-                    ])
-                )
-            );
-
-            const detailQuery = `
-                INSERT INTO promotiondetail (pm_id, smbuy_id, smfree_id, deleted_at) 
-                VALUES ?
-            `;
-
-            connection.query(detailQuery, [values], (err, results) => {
+            const query = "INSERT INTO promotion (pm_name, pm_datestart, pm_dateend, deleted_at) VALUES (?,?,?,null)";
+            connection.query(query, [pm_name, pm_datestart, pm_dateend], (err, results) => {
                 if (err) {
                     return connection.rollback(() => {
+                        connection.release();
                         console.error("MySQL Error:", err);
-                        return res.status(500).json({ message: "error", error: err });
+                        return res.status(500).json({ message: "Error inserting promotion", error: err });
                     });
                 }
 
-                // Commit the transaction
-                connection.commit((err) => {
+                const pm_id = results.insertId;
+
+                // Flatten the arrays into pairs
+                const values = promotiondetail.flatMap(detail =>
+                    detail.smbuy_id.flatMap(smbuy_id =>
+                        detail.smfree_id.map(smfree_id => [
+                            pm_id,
+                            smbuy_id,
+                            smfree_id,
+                            null
+                        ])
+                    )
+                );
+
+                const detailQuery = `
+                    INSERT INTO promotiondetail (pm_id, smbuy_id, smfree_id, deleted_at) 
+                    VALUES ?
+                `;
+
+                connection.query(detailQuery, [values], (err, results) => {
                     if (err) {
                         return connection.rollback(() => {
+                            connection.release();
                             console.error("MySQL Error:", err);
-                            return res.status(500).json({ message: "error", error: err });
+                            return res.status(500).json({ message: "Error inserting promotion detail", error: err });
                         });
                     }
 
-                    return res.status(200).json({ message: "success", pm_id });
+                    // Commit the transaction
+                    connection.commit((err) => {
+                        if (err) {
+                            return connection.rollback(() => {
+                                connection.release();
+                                console.error("MySQL Error:", err);
+                                return res.status(500).json({ message: "Error committing transaction", error: err });
+                            });
+                        }
+
+                        connection.release();
+                        return res.status(200).json({ message: "success", pm_id });
+                    });
                 });
             });
         });
     });
 });
-;
 
 router.get('/readfree', (req, res, next) => {
     const query = `

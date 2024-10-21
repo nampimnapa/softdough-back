@@ -20,10 +20,6 @@ const pool = mysql.createPool({
 
 });
 
-
-// const db = pool.promise();
-
-
 pool.getConnection((err, connection) => {
     if (err) {
         console.error("Error connecting to the database:", err);

@@ -399,114 +399,78 @@ router.post('/addsm', async (req, res) => {
     const { name, type, price, status, selltype, image } = req.body;
     const salesmenudetail = req.body.product;
 
-
     try {
-
         const salesmenuWithPicture = { sm_name: name, smt_id: type, sm_price: price, status, fix: selltype, picture: image };
-        console.log(salesmenuWithPicture, selltype)
-        connection.beginTransaction((err) => {
+        console.log(salesmenuWithPicture, selltype);
+
+        connection.getConnection((err, connection) => {
             if (err) {
-                return res.status(500).json({ message: 'Transaction start error', error: err });
+                return res.status(500).json({ message: 'Error connecting to the database', error: err });
             }
 
-            connection.query('INSERT INTO salesmenu SET ?', salesmenuWithPicture, (err, salesmenuResult) => {
+            connection.beginTransaction((err) => {
                 if (err) {
-                    console.error('Error inserting salesmenu:', err);
-                    connection.rollback(() => {
-                        res.status(500).json({ message: 'Error inserting salesmenu', error: err });
-                    });
-                    return res.status(500).json({ message: 'An error occurred' });
+                    connection.release();
+                    return res.status(500).json({ message: 'Transaction start error', error: err });
                 }
 
-                // if (!salesmenuResult || !salesmenuResult.insertId) {
-                //     console.error('salesMenu insertion result is invalid:', salesmenuResult);
-                //     connection.rollback(() => {
-                //         res.status(500).json({ message: 'Invalid salesmenu insertion result' });
-                //     });
-                //     return res.status(500).json({ message: 'An error occurred' });
-                // }
-                let salesmenuId = salesmenuResult.insertId;
-                //สำรองถ้า tsx ส่งมาละไม่ได้ ติด สตริงสัมติง
-                //ก่อนติดสตริงจะไม่มี
-                const salesmenudetailar = salesmenudetail;
- 
-                if (salesmenudetailar && Array.isArray(salesmenudetailar) && salesmenuId) {
-                    if (selltype === "1" || selltype === 1) {
-                        const salesmenudetail1 = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, detail.qty, null]);
-                        const salesmenudetailQuery = `INSERT INTO salesmenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
-                        connection.query(salesmenudetailQuery, [salesmenudetail1], (err, detailResults) => {
-                            if (err) {
-                                connection.rollback(() => {
-                                    return res.status(500).json({ message: 'Error inserting salesmenu details', error: err });
-                                });
-                            }
-                            if (!detailResults || !detailResults.insertId) {
-                                console.error('salesMenu insertion result is invalid:', salesmenuResult);
-                                connection.rollback(() => {
-                                    res.status(500).json({ message: 'Invalid salesmenu insertion result 1' });
-                                });
-                                return res.status(500).json({ message: 'An error occurred detail' });
-                            }
-
-
-                        });
-                    } else if (selltype === "2" || selltype === 2) {
-                        console.log("Type 2", salesmenudetailar)
-                        const salesmenudetailWithNullQty = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, null, null]); // กำหนดค่า qty เป็น null ในแต่ละรายการ
-                        const salesmenudetailQuery = `INSERT INTO salesmenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
-                        connection.query(salesmenudetailQuery, [salesmenudetailWithNullQty], (err, detailResults) => {
-                            if (err) {
-                                connection.rollback(() => {
-                                    return res.status(500).json({ message: 'Error inserting salesmenu details', error: err });
-                                });
-                            }
-                            if (!detailResults || !detailResults.insertId) {
-                                console.error('salesMenu insertion result is invalid:', salesmenudetailWithNullQty);
-                                connection.rollback(() => {
-                                    res.status(500).json({ message: 'Invalid salesmenu insertion result 2' });
-                                });
-                                return res.status(500).json({ message: 'An error occurred' });
-                            }
-                        });
-                    } else {
-                        return res.status(500).json({ message: 'Invalid fix value' });
-                    }
+                connection.query('INSERT INTO salesmenu SET ?', salesmenuWithPicture, (err, salesmenuResult) => {
                     if (err) {
                         console.error('Error inserting salesmenu:', err);
                         connection.rollback(() => {
+                            connection.release(); 
                             res.status(500).json({ message: 'Error inserting salesmenu', error: err });
                         });
-                        return res.status(500).json({ message: 'An error occurred' });
+                        return;
                     }
 
-                    // if (!detailResults || !detailResults.insertId) {
-                    //     console.error('salesMenu insertion result is invalid:', salesmenuResult);
-                    //     connection.rollback(() => {
-                    //         res.status(500).json({ message: 'Invalid salesmenu insertion result' });
-                    //     });
-                    //     return res.status(500).json({ message: 'An error occurred' });
-                    // }
+                    let salesmenuId = salesmenuResult.insertId;
+                    const salesmenudetailar = salesmenudetail;
 
-                    connection.commit((err) => {
-                        if (err) {
-                            connection.rollback(() => {
-                                return res.status(500).json({ message: 'Transaction commit error', error: err });
-                            });
+                    if (salesmenudetailar && Array.isArray(salesmenudetailar) && salesmenuId) {
+                        let salesmenudetailQuery = `INSERT INTO salesmenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
+                        let salesmenudetailData;
+
+                        if (selltype === "1" || selltype === 1) {
+                            salesmenudetailData = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, detail.qty, null]);
+                        } else if (selltype === "2" || selltype === 2) {
+                            salesmenudetailData = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, null, null]);
+                        } else {
+                            connection.release(); 
+                            return res.status(500).json({ message: 'Invalid fix value' });
                         }
 
-                        return res.json({
-                            salesmenuId,
-                            message: 'salesmenu and salesmenudetail added successfully!',
+                        connection.query(salesmenudetailQuery, [salesmenudetailData], (err, detailResults) => {
+                            if (err) {
+                                connection.rollback(() => {
+                                    connection.release(); 
+                                    return res.status(500).json({ message: 'Error inserting salesmenu details', error: err });
+                                });
+                            } else {
+                                connection.commit((err) => {
+                                    if (err) {
+                                        connection.rollback(() => {
+                                            connection.release(); 
+                                            return res.status(500).json({ message: 'Transaction commit error', error: err });
+                                        });
+                                    }
+
+                                    connection.release();
+                                    return res.json({
+                                        salesmenuId,
+                                        message: 'salesmenu and salesmenudetail added successfully!',
+                                    });
+                                });
+                            }
                         });
-                    });
-                } else {
-                    return res.status(400).json({
-                        salesmenuId,
-                        message: 'Invalid salesmenudetail format นอย',
-                    });
-                }
-
-
+                    } else {
+                        connection.release(); 
+                        return res.status(400).json({
+                            salesmenuId,
+                            message: 'Invalid salesmenudetail format นอย',
+                        });
+                    }
+                });
             });
         });
     } catch (error) {
@@ -516,399 +480,67 @@ router.post('/addsm', async (req, res) => {
 });
 //edit กรณี insert กับิ edit มีปหใ roolback ก็งงๆ
 //ได้ละจ้า ชั้นโง่เอง
-router.patch('/editsm/:sm_id', upload.single('picture'),isAdmin, async (req, res) => {
+router.patch('/editsm/:sm_id', async (req, res) => {
     const sm_id = req.params.sm_id;
+    const { sm_name, smt_id, sm_price, status, fix, salesmenudetail, picture } = req.body;
 
-    const { sm_name, smt_id, sm_price, fix, salesmenudetail } = req.body;
-
-    const imageBuffer = req.file && req.file.buffer ? req.file.buffer : null;
-
+    const conn = await connection.promise().getConnection();
 
     try {
-        let imageBase64 = null;
+        await conn.beginTransaction();
 
-        // ตรวจสอบว่ามีรูปภาพที่อัปโหลดเข้ามาหรือไม่
-        if (imageBuffer) {
-            // ปรับขนาดรูปภาพ
-            const resizedImageBuffer = await sharp(imageBuffer)
-                .resize({ width: 300, height: 300 })
-                .toBuffer();
+        const salesmenuWithPicture = { sm_name, smt_id, sm_price, fix, picture, status };
 
-            // เปลี่ยนข้อมูลรูปภาพเป็น base64
-            imageBase64 = resizedImageBuffer.toString('base64');
+        const [salesMenuResult] = await conn.query(
+            'UPDATE salesmenu SET ?, updated_at = CURRENT_TIMESTAMP WHERE sm_id = ?',
+            [salesmenuWithPicture, sm_id]
+        );
+
+        if (salesMenuResult.affectedRows === 0) {
+            throw new Error('Sales menu not found');
         }
 
-        const salesmenuWithPicture = { sm_name, smt_id, sm_price, fix };
-        console.log(salesmenuWithPicture)
-        if (imageBase64) {
-            salesmenuWithPicture.picture = imageBase64;
-        }
+        if (salesmenudetail && salesmenudetail.length > 0) {
+            const [existingDetails] = await conn.query('SELECT pd_id FROM salesmenudetail WHERE sm_id = ?', [sm_id]);
+            const existingPdIds = existingDetails.map(result => result.pd_id);
+            const newPdIds = salesmenudetail.map(detail => detail.pd_id);
 
-        connection.beginTransaction((err) => {
-            if (err) {
-                res.status(500).json({ message: 'Error updating salesMenu', error: err });
-                return; // เพิ่ม return เพื่อหยุดการทำงานของฟังก์ชัน
+            const updateData = salesmenudetail.filter(item => existingPdIds.includes(item.pd_id));
+            const insertData = salesmenudetail.filter(item => !existingPdIds.includes(item.pd_id));
+            const deleteData = existingPdIds.filter(id => !newPdIds.includes(id));
+
+            if (deleteData.length > 0) {
+                await conn.query(
+                    'UPDATE salesmenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id IN (?) AND sm_id = ?',
+                    [deleteData, sm_id]
+                );
             }
-            ///////////////////////////////
-            connection.query('UPDATE salesmenu SET ?,updated_at = CURRENT_TIMESTAMP  WHERE sm_id = ?', [salesmenuWithPicture, sm_id], (err, salesMenuResult) => {
-                if (err) {
-                    console.error('Error updating salesMenu:', err);
-                    connection.rollback(() => {
-                        return res.status(500).json({ message: 'Error updating salesMenu', error: err });
-                    });
+
+            if (insertData.length > 0) {
+                const insertQuery = 'INSERT INTO salesmenudetail (sm_id, pd_id, qty, deleted_at) VALUES ?';
+                const insertValues = insertData.map(detail => [sm_id, detail.pd_id, fix === "1" ? detail.qty : null, null]);
+                await conn.query(insertQuery, [insertValues]);
+            }
+
+            if (updateData.length > 0) {
+                const updateQuery = 'UPDATE salesmenudetail SET qty = ?, deleted_at = NULL WHERE pd_id = ? AND sm_id = ?';
+                for (const detail of updateData) {
+                    await conn.query(updateQuery, [fix === "1" ? detail.qty : null, detail.pd_id, sm_id]);
                 }
-
-
-                if (!salesMenuResult || salesMenuResult.affectedRows === 0) {
-                    console.error('salesMenu update result is invalid:', salesMenuResult);
-                    connection.rollback(() => {
-                        return res.status(500).json({ message: 'Invalid salesMenu update result' });
-                    });
-                }
-
-                ///////////////////////////////
-                if (salesmenudetail && salesmenudetail.length > 0) {
-                    if (fix === "1") {
-                        const updateData = [];
-                        const insertData = [];
-                        const deleteData = [];
-                        const query = `SELECT salesmenudetail.pd_id FROM salesmenudetail WHERE sm_id = ?`;
-
-                        let pdidQ = salesmenudetail.map(detail => detail.pd_id).filter(id => id !== undefined);
-                        console.log(pdidQ);
-                        let pdid;
-
-                        connection.query(query, [sm_id], (err, results) => {
-                            if (err) {
-                                console.error("MySQL Query Error:", err);
-                                // handle error
-                            }
-                            pdid = results.map(result => result.pd_id);
-
-                            pdid.forEach(detail => {
-
-                                const selectedData = salesmenudetail.filter(item => item.pd_id === detail);
-
-                                console.log("for up selectedData", selectedData)
-
-                                // console.log("for insert indIdsNotInIndIdsQ", indIdsNotInIndIdsQ)
-
-                                if (detail) {
-                                    // ตรวจสอบว่า ind_id มีอยู่ในฐานข้อมูลหรือไม่
-                                    // const query = `SELECT ingredient_lot_detail.ind_id FROM ingredient_lot_detail WHERE indl_id = ?`;
-
-                                    if (pdidQ.includes(detail)) {
-                                        // ind_id มีอยู่ในฐานข้อมูล ให้ทำการอัปเดต
-                                        console.log("Update data:", selectedData);
-                                        updateData.push(selectedData);
-                                    } else {
-                                        if (pdidQ) {
-                                            // ind_id ไม่มีอยู่ในฐานข้อมูล ให้ทำการลบ
-                                            console.log("delete data:", detail);
-                                            deleteData.push(detail);
-                                        } else {
-                                            // ind_id ไม่ได้ระบุ ให้ทำการเพิ่ม
-                                            console.log("nonono insert data:", selectedData);
-                                            insertData.push(selectedData);
-                                        }
-                                    }
-
-                                } else {
-                                    console.log(detail)
-                                    // insertData.push(detail);
-                                }
-                            });
-
-                            const pdidNotInpdidQ = pdidQ.filter(id => !pdid.includes(id));
-                            console.log(pdidNotInpdidQ)
-
-                            if (pdidNotInpdidQ != []) {
-                                pdidNotInpdidQ.forEach(detail => {
-                                    console.log(detail)
-                                    const pdidNotInpdidQdata = salesmenudetail.filter(item => item.pd_id === detail);
-                                    console.log("Insert data:", pdidNotInpdidQdata);
-                                    insertData.push(pdidNotInpdidQdata);
-                                });
-
-                            }
-                            console.log(deleteData, insertData, updateData)
-
-                            console.log("de length", deleteData.length)
-                            console.log("in length", insertData.length)
-                            console.log("ed length", updateData.length)
-
-                            if (deleteData.length > 0) {
-                                // const deleteQuery = "DELETE FROM Ingredient_lot_detail WHERE ind_id = ? AND indl_id = ?";
-                                const deleteQuery = "UPDATE salesmenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND sm_id = ?";
-                                deleteData.forEach(detail => {
-                                    const deleteValues = [detail, sm_id];
-                                    console.log(deleteValues)
-
-                                    connection.query(deleteQuery, deleteValues, (err, results) => {
-                                        if (err) {
-                                            console.error('Error updating product:', err);
-                                            connection.rollback(() => {
-                                                res.status(500).json({ message: 'Error updating recipe', error: err });
-                                            });
-                                            return;
-                                        }
-
-                                        console.log("Deleted data:", results);
-                                    });
-                                });
-                            }
-
-                            // ตรวจสอบว่ามีข้อมูลที่ต้องการเพิ่มหรือไม่
-                            if (insertData.length > 0) {
-                                console.log("database inn", insertData);
-                                console.log("indl id", sm_id);
-
-                                const insertQuery = "INSERT INTO salesmenudetail (sm_id, pd_id, qty, deleted_at) VALUES (?, ?, ?, null)";
-
-                                const flattenedInsertData = insertData.flat();
-
-                                flattenedInsertData.forEach(detail => {
-                                    const insertValues = [
-                                        sm_id,
-                                        detail.pd_id,
-                                        detail.qty
-                                    ];
-
-                                    console.log("insertValues", insertValues);
-
-                                    connection.query(insertQuery, insertValues, (err, results) => {
-                                        if (err) {
-                                            console.error('Error inserting data:', err);
-                                            connection.rollback(() => {
-                                                res.status(500).json({ message: 'Error inserting data', error: err });
-                                            });
-                                            return;
-                                        }
-
-                                        console.log("Inserted data:", results);
-                                    });
-                                });
-                            } else {
-                                console.log("No data to insert");
-                            }
-
-
-                            // ตรวจสอบว่ามีข้อมูลที่ต้องการอัปเดตหรือไม่
-                            // console.log("updateData",updateData)
-                            if (updateData.length > 0) {
-                                console.log("database uppp", updateData)
-                                // const updateQuery = "UPDATE Ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ? WHERE ind_id = ? AND indl_id = ?";
-                                const updateQuery = "UPDATE salesmenudetail SET qty = ?, deleted_at = NULL WHERE pd_id = ? AND sm_id = ?";
-                                //การใช้ flat() จะช่วยให้คุณได้ array ที่ flatten แล้วที่มี object ภายใน ซึ่งจะทำให้ง่ายต่อการทำงานกับข้อมูลในลำดับถัดไป.
-                                const flattenedUpdateData = updateData.flat();
-                                console.log("flattenedUpdateData", flattenedUpdateData)
-                                flattenedUpdateData.forEach(detail => {
-                                    const updateValues = [
-                                        detail.qty,
-                                        detail.pd_id,
-                                        parseInt(sm_id),
-                                    ];
-
-                                    connection.query(updateQuery, updateValues, (err, results) => {
-                                        if (err) {
-                                            console.error('Error updating product:', err);
-                                            connection.rollback(() => {
-                                                res.status(500).json({ message: 'Error updating recipe', error: err });
-                                            });
-                                            return;
-                                        }
-
-                                        console.log("Updated data:", results);
-                                    });
-                                });
-
-                            }
-
-                            // res.status(200).json({ message: "test เงื่อนไข" });
-                        });
-
-                    } else if (fix === "2") {
-                        const updateData = [];
-                        const insertData = [];
-                        const deleteData = [];
-                        const query = `SELECT salesmenudetail.pd_id FROM salesmenudetail WHERE sm_id = ?`;
-
-                        let pdidQ = salesmenudetail.map(detail => detail.pd_id).filter(id => id !== undefined);
-                        console.log(pdidQ);
-                        let pdid;
-
-                        connection.query(query, [sm_id], (err, results) => {
-                            if (err) {
-                                console.error("MySQL Query Error:", err);
-                                // handle error
-                            }
-                            pdid = results.map(result => result.pd_id);
-
-                            pdid.forEach(detail => {
-
-                                const selectedData = salesmenudetail.filter(item => item.pd_id === detail);
-
-                                console.log("for up selectedData", selectedData)
-
-                                // console.log("for insert indIdsNotInIndIdsQ", indIdsNotInIndIdsQ)
-
-                                if (detail) {
-                                    // ตรวจสอบว่า ind_id มีอยู่ในฐานข้อมูลหรือไม่
-                                    // const query = `SELECT ingredient_lot_detail.ind_id FROM ingredient_lot_detail WHERE indl_id = ?`;
-
-                                    if (pdidQ.includes(detail)) {
-                                        // ind_id มีอยู่ในฐานข้อมูล ให้ทำการอัปเดต
-                                        console.log("Update data:", selectedData);
-                                        updateData.push(selectedData);
-                                    } else {
-                                        if (pdidQ) {
-                                            // ind_id ไม่มีอยู่ในฐานข้อมูล ให้ทำการลบ
-                                            console.log("delete data:", detail);
-                                            deleteData.push(detail);
-                                        } else {
-                                            // ind_id ไม่ได้ระบุ ให้ทำการเพิ่ม
-                                            console.log("nonono insert data:", selectedData);
-                                            insertData.push(selectedData);
-                                        }
-                                    }
-
-                                } else {
-                                    console.log(detail)
-                                    // insertData.push(detail);
-                                }
-                            });
-
-                            const pdidNotInpdidQ = pdidQ.filter(id => !pdid.includes(id));
-                            console.log(pdidNotInpdidQ)
-
-                            if (pdidNotInpdidQ != []) {
-                                pdidNotInpdidQ.forEach(detail => {
-                                    console.log(detail)
-                                    const pdidNotInpdidQdata = salesmenudetail.filter(item => item.pd_id === detail);
-                                    console.log("Insert data:", pdidNotInpdidQdata);
-                                    insertData.push(pdidNotInpdidQdata);
-                                });
-
-                            }
-                            console.log(deleteData, insertData, updateData)
-
-                            console.log("de length", deleteData.length)
-                            console.log("in length", insertData.length)
-                            console.log("ed length", updateData.length)
-
-                            if (deleteData.length > 0) {
-                                // const deleteQuery = "DELETE FROM Ingredient_lot_detail WHERE ind_id = ? AND indl_id = ?";
-                                const deleteQuery = "UPDATE salesmenudetail SET deleted_at = CURRENT_TIMESTAMP WHERE pd_id = ? AND sm_id = ?";
-                                deleteData.forEach(detail => {
-                                    const deleteValues = [detail, sm_id];
-                                    console.log(deleteValues)
-
-                                    connection.query(deleteQuery, deleteValues, (err, results) => {
-                                        if (err) {
-                                            console.error('Error updating product:', err);
-                                            connection.rollback(() => {
-                                                res.status(500).json({ message: 'Error updating recipe', error: err });
-                                            });
-                                            return;
-                                        }
-
-                                        console.log("Deleted data:", results);
-                                    });
-                                });
-                            }
-
-                            // ตรวจสอบว่ามีข้อมูลที่ต้องการเพิ่มหรือไม่
-                            if (insertData.length > 0) {
-                                console.log("database inn", insertData)
-                                console.log("indl id", sm_id)
-
-                                const insertQuery = "INSERT INTO salesmenudetail (sm_id, pd_id, qty,deleted_at) VALUES (?,?,?,?)";
-
-                                const flattenedineData = insertData.flat();
-
-                                flattenedineData.forEach(detail => {
-                                    const insertValues = [
-                                        sm_id,
-                                        detail.pd_id,
-                                        null,
-                                        null // กำหนดให้ deleted_at เป็น null
-                                    ];
-
-                                    connection.query(insertQuery, insertValues, (err, results) => {
-                                        if (err) {
-                                            console.error('Error updating product:', err);
-                                            connection.rollback(() => {
-                                                res.status(500).json({ message: 'Error updating recipe', error: err });
-                                            });
-                                            return;
-                                        }
-
-                                        console.log("Inserted data result:", results);
-                                    });
-                                });
-
-
-                            }
-
-                            // ตรวจสอบว่ามีข้อมูลที่ต้องการอัปเดตหรือไม่
-                            // console.log("updateData",updateData)
-                            if (updateData.length > 0) {
-                                console.log("database uppp", updateData)
-                                // const updateQuery = "UPDATE Ingredient_lot_detail SET qtypurchased = ?, date_exp = ?, price = ? WHERE ind_id = ? AND indl_id = ?";
-                                const updateQuery = "UPDATE salesmenudetail SET qty = ?, deleted_at = NULL WHERE pd_id = ? AND sm_id = ?";
-                                //การใช้ flat() จะช่วยให้คุณได้ array ที่ flatten แล้วที่มี object ภายใน ซึ่งจะทำให้ง่ายต่อการทำงานกับข้อมูลในลำดับถัดไป.
-                                const flattenedUpdateData = updateData.flat();
-                                console.log("flattenedUpdateData", flattenedUpdateData)
-                                flattenedUpdateData.forEach(detail => {
-                                    const updateValues = [
-                                        null,
-                                        detail.pd_id,
-                                        sm_id
-                                    ];
-
-                                    connection.query(updateQuery, updateValues, (err, results) => {
-                                        if (err) {
-                                            console.error('Error updating product:', err);
-                                            connection.rollback(() => {
-                                                res.status(500).json({ message: 'Error updating recipe', error: err });
-                                            });
-                                            return;
-                                        }
-
-                                        console.log("Updated data:", results);
-                                    });
-                                });
-
-                            }
-
-                            // res.status(200).json({ message: "test เงื่อนไข" });
-                        });
-                    } else {
-                        return res.status(500).json({ message: 'Invalid fix value' });
-                    }
-
-
-                }
-
-                //////////////////////////////
-                connection.commit((err) => {
-                    if (err) {
-                        connection.rollback(() => {
-                            return res.status(500).json({ message: 'Transaction commit error', error: err });
-                        });
-                    }
-
-                    return res.json({
-                        // productId: pd_id,
-                        message: 'Product updated successfully!',
-                    });
-                });
-
-            });
-        });
+            }
+        }
+
+        await conn.commit();
+        res.json({ message: 'Sales menu updated successfully!' });
     } catch (error) {
-        console.error('Error resizing image:', error);
-        return res.status(500).json({ message: 'Error resizing image', error });
+        await conn.rollback();
+        console.error('Error updating sales menu:', error);
+        res.status(500).json({ 
+            message: 'An error occurred while updating the sales menu', 
+            error: error.message 
+        });
+    } finally {
+        conn.release();
     }
 });
 

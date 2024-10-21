@@ -6,10 +6,11 @@ const multer = require('multer');
 const upload = multer();
 const sharp = require('sharp');
 
-const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder ,isAdminUserOrder} = require('../middleware')
+const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder } = require('../middleware');
+const pool = require("../connection");
 
 
-router.get('/unit',(req, res, next) => {
+router.get('/unit', (req, res, next) => {
     var query = 'select * from unit where type="2"'
     connection.query(query, (err, results) => {
         if (!err) {
@@ -50,7 +51,7 @@ router.patch('/updatesmt/:smt_id', (req, res, next) => {
     const smt_id = req.params.smt_id;
     const sm = req.body;
     var query = "UPDATE salesmenutype SET smt_name=?,un_id=?,qty_per_unit=? WHERE smt_id=?";
-    connection.query(query, [sm.smt_name,sm.un_id,sm.qty_per_unit, smt_id], (err, results) => {
+    connection.query(query, [sm.smt_name, sm.un_id, sm.qty_per_unit, smt_id], (err, results) => {
         if (!err) {
             if (results.affectedRows === 0) {
                 console.error(err);
@@ -88,7 +89,7 @@ router.patch('/updatesmt/:smt_id', (req, res, next) => {
 // })
 
 //read sm ข้อมูลโชว์หมดไม่ได้จัด
-router.get('/sm/:sm_id',(req, res, next) => {
+router.get('/sm/:sm_id', (req, res, next) => {
     const sm_id = Number(req.params.sm_id);
 
     var query = `SELECT sm.*, smt.*, smd.* 
@@ -386,7 +387,7 @@ router.get('/small', async (req, res, next) => {
 //                     });
 //                 }
 
-                
+
 
 //             });
 //         });
@@ -395,128 +396,227 @@ router.get('/small', async (req, res, next) => {
 //         return res.status(500).json({ message: 'Error resizing image', error });
 //     }
 // });
+
+
+// router.post('/addsm', async (req, res) => {
+//     const { name, type, price, status, selltype, image } = req.body;
+//     const salesmenudetail = req.body.product;
+
+    
+
+//     try {
+
+//         const salesmenuWithPicture = { sm_name: name, smt_id: type, sm_price: price, status, fix: selltype, picture: image };
+//         console.log(salesmenuWithPicture, selltype)
+//         connection.beginTransaction((err) => {
+//             if (err) {
+//                 return res.status(500).json({ message: 'Transaction start error', error: err });
+//             }
+
+//             connection.query('INSERT INTO salesmenu SET ?', salesmenuWithPicture, (err, salesmenuResult) => {
+//                 if (err) {
+//                     console.error('Error inserting salesmenu:', err);
+//                     connection.rollback(() => {
+//                         res.status(500).json({ message: 'Error inserting salesmenu', error: err });
+//                     });
+//                     return res.status(500).json({ message: 'An error occurred' });
+//                 }
+
+//                 // if (!salesmenuResult || !salesmenuResult.insertId) {
+//                 //     console.error('salesMenu insertion result is invalid:', salesmenuResult);
+//                 //     connection.rollback(() => {
+//                 //         res.status(500).json({ message: 'Invalid salesmenu insertion result' });
+//                 //     });
+//                 //     return res.status(500).json({ message: 'An error occurred' });
+//                 // }
+//                 let salesmenuId = salesmenuResult.insertId;
+//                 //สำรองถ้า tsx ส่งมาละไม่ได้ ติด สตริงสัมติง
+//                 //ก่อนติดสตริงจะไม่มี
+//                 const salesmenudetailar = salesmenudetail;
+
+//                 if (salesmenudetailar && Array.isArray(salesmenudetailar) && salesmenuId) {
+//                     if (selltype === "1" || selltype === 1) {
+//                         const salesmenudetail1 = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, detail.qty, null]);
+//                         const salesmenudetailQuery = `INSERT INTO salesmenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
+//                         connection.query(salesmenudetailQuery, [salesmenudetail1], (err, detailResults) => {
+//                             if (err) {
+//                                 connection.rollback(() => {
+//                                     return res.status(500).json({ message: 'Error inserting salesmenu details', error: err });
+//                                 });
+//                             }
+//                             if (!detailResults || !detailResults.insertId) {
+//                                 console.error('salesMenu insertion result is invalid:', salesmenuResult);
+//                                 connection.rollback(() => {
+//                                     res.status(500).json({ message: 'Invalid salesmenu insertion result 1' });
+//                                 });
+//                                 return res.status(500).json({ message: 'An error occurred detail' });
+//                             }
+
+
+//                         });
+//                     } else if (selltype === "2" || selltype === 2) {
+//                         console.log("Type 2", salesmenudetailar)
+//                         const salesmenudetailWithNullQty = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, null, null]); // กำหนดค่า qty เป็น null ในแต่ละรายการ
+//                         const salesmenudetailQuery = `INSERT INTO salesmenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
+//                         connection.query(salesmenudetailQuery, [salesmenudetailWithNullQty], (err, detailResults) => {
+//                             if (err) {
+//                                 connection.rollback(() => {
+//                                     return res.status(500).json({ message: 'Error inserting salesmenu details', error: err });
+//                                 });
+//                             }
+//                             if (!detailResults || !detailResults.insertId) {
+//                                 console.error('salesMenu insertion result is invalid:', salesmenudetailWithNullQty);
+//                                 connection.rollback(() => {
+//                                     res.status(500).json({ message: 'Invalid salesmenu insertion result 2' });
+//                                 });
+//                                 return res.status(500).json({ message: 'An error occurred' });
+//                             }
+//                         });
+//                     } else {
+//                         return res.status(500).json({ message: 'Invalid fix value' });
+//                     }
+//                     if (err) {
+//                         console.error('Error inserting salesmenu:', err);
+//                         connection.rollback(() => {
+//                             res.status(500).json({ message: 'Error inserting salesmenu', error: err });
+//                         });
+//                         return res.status(500).json({ message: 'An error occurred' });
+//                     }
+
+//                     // if (!detailResults || !detailResults.insertId) {
+//                     //     console.error('salesMenu insertion result is invalid:', salesmenuResult);
+//                     //     connection.rollback(() => {
+//                     //         res.status(500).json({ message: 'Invalid salesmenu insertion result' });
+//                     //     });
+//                     //     return res.status(500).json({ message: 'An error occurred' });
+//                     // }
+
+//                     connection.commit((err) => {
+//                         if (err) {
+//                             connection.rollback(() => {
+//                                 return res.status(500).json({ message: 'Transaction commit error', error: err });
+//                             });
+//                         }
+
+//                         return res.json({
+//                             salesmenuId,
+//                             message: 'salesmenu and salesmenudetail added successfully!',
+//                         });
+//                     });
+//                 } else {
+//                     return res.status(400).json({
+//                         salesmenuId,
+//                         message: 'Invalid salesmenudetail format นอย',
+//                     });
+//                 }
+
+
+//             });
+//         });
+//     } catch (error) {
+//         console.error('Error resizing image:', error);
+//         return res.status(500).json({ message: 'Error resizing image', error });
+//     }
+// });
+
+// แก้ connection begin แดงทำงานไม่ได้
 router.post('/addsm', async (req, res) => {
     const { name, type, price, status, selltype, image } = req.body;
     const salesmenudetail = req.body.product;
 
-
     try {
-
-        const salesmenuWithPicture = { sm_name: name, smt_id: type, sm_price: price, status, fix: selltype, picture: image };
-        console.log(salesmenuWithPicture, selltype)
-        connection.beginTransaction((err) => {
+        pool.getConnection((err, connection) => {
             if (err) {
-                return res.status(500).json({ message: 'Transaction start error', error: err });
+                console.error('Error getting connection from pool:', err); // Log the error
+                return res.status(500).json({ message: 'Error getting connection from pool', error: err });
             }
 
-            connection.query('INSERT INTO salesmenu SET ?', salesmenuWithPicture, (err, salesmenuResult) => {
+            // เริ่ม transaction
+            connection.beginTransaction((err) => {
                 if (err) {
-                    console.error('Error inserting salesmenu:', err);
-                    connection.rollback(() => {
-                        res.status(500).json({ message: 'Error inserting salesmenu', error: err });
-                    });
-                    return res.status(500).json({ message: 'An error occurred' });
+                    console.error('Error starting transaction:', err); // Log the error
+                    connection.release();
+                    return res.status(500).json({ message: 'Transaction start error', error: err });
                 }
 
-                // if (!salesmenuResult || !salesmenuResult.insertId) {
-                //     console.error('salesMenu insertion result is invalid:', salesmenuResult);
-                //     connection.rollback(() => {
-                //         res.status(500).json({ message: 'Invalid salesmenu insertion result' });
-                //     });
-                //     return res.status(500).json({ message: 'An error occurred' });
-                // }
-                let salesmenuId = salesmenuResult.insertId;
-                //สำรองถ้า tsx ส่งมาละไม่ได้ ติด สตริงสัมติง
-                //ก่อนติดสตริงจะไม่มี
-                const salesmenudetailar = salesmenudetail;
+                try {
+                    const salesmenuWithPicture = { sm_name: name, smt_id: type, sm_price: price, status, fix: selltype, picture: image };
+                    console.log('Sales menu data:', salesmenuWithPicture); // Log data before inserting
 
-                if (salesmenudetailar && Array.isArray(salesmenudetailar) && salesmenuId) {
-                    if (selltype === "1" || selltype === 1) {
-                        const salesmenudetail1 = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, detail.qty, null]);
-                        const salesmenudetailQuery = `INSERT INTO salesmenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
-                        connection.query(salesmenudetailQuery, [salesmenudetail1], (err, detailResults) => {
-                            if (err) {
-                                connection.rollback(() => {
-                                    return res.status(500).json({ message: 'Error inserting salesmenu details', error: err });
-                                });
-                            }
-                            if (!detailResults || !detailResults.insertId) {
-                                console.error('salesMenu insertion result is invalid:', salesmenuResult);
-                                connection.rollback(() => {
-                                    res.status(500).json({ message: 'Invalid salesmenu insertion result 1' });
-                                });
-                                return res.status(500).json({ message: 'An error occurred detail' });
-                            }
-
-
-                        });
-                    } else if (selltype === "2" || selltype === 2) {
-                        console.log("Type 2", salesmenudetailar)
-                        const salesmenudetailWithNullQty = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, null, null]); // กำหนดค่า qty เป็น null ในแต่ละรายการ
-                        const salesmenudetailQuery = `INSERT INTO salesmenudetail (sm_id, pd_id, qty,deleted_at) VALUES ?`;
-                        connection.query(salesmenudetailQuery, [salesmenudetailWithNullQty], (err, detailResults) => {
-                            if (err) {
-                                connection.rollback(() => {
-                                    return res.status(500).json({ message: 'Error inserting salesmenu details', error: err });
-                                });
-                            }
-                            if (!detailResults || !detailResults.insertId) {
-                                console.error('salesMenu insertion result is invalid:', salesmenudetailWithNullQty);
-                                connection.rollback(() => {
-                                    res.status(500).json({ message: 'Invalid salesmenu insertion result 2' });
-                                });
-                                return res.status(500).json({ message: 'An error occurred' });
-                            }
-                        });
-                    } else {
-                        return res.status(500).json({ message: 'Invalid fix value' });
-                    }
-                    if (err) {
-                        console.error('Error inserting salesmenu:', err);
-                        connection.rollback(() => {
-                            res.status(500).json({ message: 'Error inserting salesmenu', error: err });
-                        });
-                        return res.status(500).json({ message: 'An error occurred' });
-                    }
-
-                    // if (!detailResults || !detailResults.insertId) {
-                    //     console.error('salesMenu insertion result is invalid:', salesmenuResult);
-                    //     connection.rollback(() => {
-                    //         res.status(500).json({ message: 'Invalid salesmenu insertion result' });
-                    //     });
-                    //     return res.status(500).json({ message: 'An error occurred' });
-                    // }
-
-                    connection.commit((err) => {
+                    connection.query('INSERT INTO salesmenu SET ?', salesmenuWithPicture, (err, salesmenuResult) => {
                         if (err) {
+                            console.error('Error inserting salesmenu:', err); // Log the error
                             connection.rollback(() => {
-                                return res.status(500).json({ message: 'Transaction commit error', error: err });
+                                connection.release();
+                                return res.status(500).json({ message: 'Error inserting salesmenu', error: err });
                             });
                         }
 
-                        return res.json({
-                            salesmenuId,
-                            message: 'salesmenu and salesmenudetail added successfully!',
-                        });
+                        let salesmenuId = salesmenuResult.insertId;
+                        const salesmenudetailar = salesmenudetail;
+                        console.log('Sales menu ID:', salesmenuId);
+                        console.log('Sales menu details:', salesmenudetailar);
+
+                        if (salesmenudetailar && Array.isArray(salesmenudetailar) && salesmenuId) {
+                            if (selltype === "1" || selltype === 1) {
+                                const salesmenudetail1 = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, detail.qty, null]);
+                                const salesmenudetailQuery = `INSERT INTO salesmenudetail (sm_id, pd_id, qty, deleted_at) VALUES ?`;
+
+                                console.log('Sales menu detail data:', salesmenudetail1); // Log the details data before inserting
+
+                                connection.query(salesmenudetailQuery, [salesmenudetail1], (err, detailResults) => {
+                                    if (err) {
+                                        console.error('Error inserting salesmenu details:', err); // Log the error
+                                        return connection.rollback(() => {
+                                            connection.release();
+                                            return res.status(500).json({ message: 'Error inserting salesmenu details', error: err });
+                                        });
+                                    }
+
+                                    connection.commit((err) => {
+                                        if (err) {
+                                            console.error('Error committing transaction:', err); // Log the error
+                                            return connection.rollback(() => {
+                                                connection.release();
+                                                return res.status(500).json({ message: 'Transaction commit error', error: err });
+                                            });
+                                        }
+
+                                        connection.release();
+                                        return res.json({
+                                            salesmenuId,
+                                            message: 'salesmenu and salesmenudetail added successfully!',
+                                        });
+                                    });
+                                });
+                            } else {
+                                // Handle selltype "2" หรืออื่น ๆ
+                            }
+                        } else {
+                            connection.release(); 
+                            return res.status(400).json({ message: 'Invalid salesmenudetail format' });
+                        }
                     });
-                } else {
-                    return res.status(400).json({
-                        salesmenuId,
-                        message: 'Invalid salesmenudetail format นอย',
+                } catch (queryError) {
+                    console.error('Error during query execution:', queryError); // Log the error
+                    connection.rollback(() => {
+                        connection.release();
+                        return res.status(500).json({ message: 'Error occurred during query execution', error: queryError });
                     });
                 }
-
-
             });
         });
-    } catch (error) {
-        console.error('Error resizing image:', error);
-        return res.status(500).json({ message: 'Error resizing image', error });
+    } catch (outerError) {
+        console.error('Unexpected error:', outerError); // Log the error
+        return res.status(500).json({ message: 'Unexpected error', error: outerError });
     }
 });
+
+
+
 //edit กรณี insert กับิ edit มีปหใ roolback ก็งงๆ
 //ได้ละจ้า ชั้นโง่เอง
-router.patch('/editsm/:sm_id', upload.single('picture'),isAdmin, async (req, res) => {
+router.patch('/editsm/:sm_id', upload.single('picture'), isAdmin, async (req, res) => {
     const sm_id = req.params.sm_id;
 
     const { sm_name, smt_id, sm_price, fix, salesmenudetail } = req.body;

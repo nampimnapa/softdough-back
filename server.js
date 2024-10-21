@@ -145,7 +145,7 @@ const frontUrl = process.env.FRONT;
 
 // CORS settings
 const corsOptions = {
-    origin: [frontUrl, 'http://localhost:3001'],
+    origin: [frontUrl, 'http://localhost:3001', 'http://localhost:3000'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type']

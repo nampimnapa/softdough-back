@@ -14,9 +14,3 @@ services:
       - DATABASE_PASSWORD=softdough@db
       - DATABASE_NAME=softdoughdb
       - FRONT=https://softdough.co
-    networks:
-      - app-network
-
-networks:
-  app-network:
-    driver: bridge

@@ -4,7 +4,14 @@ require('dotenv').config();
 const frontUrl = process.env.FRONT;
 
 const setupSocket = (server) => {
-    const io = socketIo(server, { cors: { origin: frontUrl, credentials: true } });
+    const io = socketIo(server, {
+        cors: {
+          origin: process.env.FRONT,
+          methods: ["GET", "POST"],
+          allowedHeaders: ["Content-Type", "Authorization"],
+          credentials: true,
+        }
+      });
 
     io.on('connection', (socket) => {
         console.log('User connected:', socket.id);

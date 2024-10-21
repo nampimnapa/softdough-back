@@ -15,7 +15,7 @@ const router = express.Router();
 //     });      
 // })
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const  {ifNotLoggedIn,ifLoggedIn, isAdmin,isUserProduction,isUserOrder} = require('../middleware')
 
 

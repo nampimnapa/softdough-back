@@ -1,4 +1,4 @@
-FROM node:latest
+FROM node:20.9.0-bookworm
 
 # Install dependencies for Puppeteer
 RUN apt-get update && apt-get install -y \

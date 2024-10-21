@@ -56,6 +56,10 @@ router.post('/login', ifLoggedIn, [
         req.session.st_id = user.st_id;
         req.session.st_type = user.st_type;
 
+        // เซ็ตคุกกี้ isLoggedIn ให้กับ response
+        // // ใน API ของคุณ
+        res.setHeader('Set-Cookie', `isLoggedIn=true; Path=/; HttpOnly`);
+
         let loginMessage = "Successful login";
         if (req.session.st_type === '0') {
             loginMessage = "Successful admin login";
@@ -79,9 +83,15 @@ router.post('/login', ifLoggedIn, [
 });
  
 
+// router.get('/logout', (req, res) => {
+//     req.session = null;
+//     res.status(200).json({ message: "logout" });
+// });
+
 router.get('/logout', (req, res) => {
-    req.session = null;
+    res.clearCookie('isLoggedIn');  // ลบคุกกี้ isLoggedIn
+    req.session = null; // เคลียร์ session
     res.status(200).json({ message: "logout" });
-});
+  });
 
 module.exports = router;

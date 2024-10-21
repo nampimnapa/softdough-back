@@ -165,6 +165,7 @@ const Updateqtystock = async () => {
                 ingredient.ind_id,
                 SUM(ingredient_lot_detail.qty_stock) AS total_stock,
                 ingredient.ind_name,
+                ingredient.qty_per_unit as quantity,
                 (SUM(ingredient_lot_detail.qty_stock) DIV ingredient.qty_per_unit) AS ind_stock,
                 unit1.un_name AS un_purchased_name,
                 unit2.un_name AS un_ind_name,
@@ -188,6 +189,7 @@ const Updateqtystock = async () => {
                 ingredient_lot_detail.date_exp > NOW()
             GROUP BY 
                 ingredient_lot_detail.ind_id
+            ORDER BY ingredient_lot_detail.ind_id
         `;
 
         const [results] = await connection.promise().query(query);
@@ -984,7 +986,6 @@ router.get('/readdetailLotpro/:pdo_id', (req, res, next) => {
         pdod.*, 
         ind.*
     FROM 
-        ingredient_used_pro as iup
     JOIN 
         ingredient_used_detail as iud ON iup.indlde_id = iud.indlde_id
     JOIN 

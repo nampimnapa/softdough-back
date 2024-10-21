@@ -143,7 +143,7 @@ router.post('/addProductWithRecipe', async (req, res) => {
         });
     } finally {
         conn.release();
-    }
+    } 
 });
 
 //read

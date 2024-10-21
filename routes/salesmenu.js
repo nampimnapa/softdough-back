@@ -429,7 +429,7 @@ router.post('/addsm', async (req, res) => {
                 //สำรองถ้า tsx ส่งมาละไม่ได้ ติด สตริงสัมติง
                 //ก่อนติดสตริงจะไม่มี
                 const salesmenudetailar = salesmenudetail;
-
+ 
                 if (salesmenudetailar && Array.isArray(salesmenudetailar) && salesmenuId) {
                     if (selltype === "1" || selltype === 1) {
                         const salesmenudetail1 = salesmenudetailar.map(detail => [salesmenuId, detail.pd_id, detail.qty, null]);

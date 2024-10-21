@@ -145,12 +145,20 @@ const frontUrl = process.env.FRONT;
 
 // CORS settings
 const corsOptions = {
-    origin: frontUrl,
+    origin: [frontUrl, 'http://softdough-front-end:3000'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type']
 };
 app.use(cors(corsOptions));
+
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', frontUrl);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', true);
+    next();
+  });
 
 // Cookie session settings
 app.use(cookieSession({

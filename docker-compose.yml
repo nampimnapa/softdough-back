@@ -13,4 +13,4 @@ services:
       - DATABASE_USER=root
       - DATABASE_PASSWORD=softdough@db
       - DATABASE_NAME=softdoughdb
-      - FRONT=http://localhost:3000
+      - FRONT=https://softdough.co

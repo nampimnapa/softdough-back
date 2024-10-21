@@ -145,7 +145,7 @@ const frontUrl = process.env.FRONT;
 
 // CORS settings
 const corsOptions = {
-    origin: frontUrl,
+    origin: '*',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type']

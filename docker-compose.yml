@@ -13,4 +13,10 @@ services:
       - DATABASE_USER=root
       - DATABASE_PASSWORD=softdough@db
       - DATABASE_NAME=softdoughdb
-      - FRONT=https://softdough.co
+      - FRONT=http://softdough-front-end:3000
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

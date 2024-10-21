@@ -469,7 +469,6 @@ async function countCurrentStockWithNamesAndExpiry() {
     }
 }
 
-
 // API ข้อมูลสต็อคปัจจุบัน ชื่อสินค้า และวันหมดอายุ
 router.get('/countstock', async (req, res) => {
     try {
@@ -480,17 +479,96 @@ router.get('/countstock', async (req, res) => {
     }
 });
 
+router.get('/todaychange', async (req, res, next) => {
+    const query = `
+        SELECT 
+            circulating_money.change,
+            DATE_FORMAT(circulating_money.created_at, '%Y-%m-%d') AS date
+        FROM circulating_money
+        WHERE DATE(circulating_money.created_at) = CURDATE()
+        ORDER BY circulating_money.created_at DESC
+        LIMIT 1
+    `;
+
+    try {
+        const db = connection.promise();
+        const [results] = await db.query(query);
+
+        if (results.length > 0) {
+            const { change, date, time } = results[0];
+            return res.status(200).json({
+                change,
+                date
+
+            });
+        } else {
+            return res.status(404).json({ message: "No circulating money data found for today" });
+        }
+    } catch (err) {
+        console.error('Database query error:', err);
+        return res.status(500).json({
+            message: "An error occurred while fetching today's circulating money data",
+            error: err.message
+        });
+    }
+});
 
 
 
+// ปิดรอบการขาย
+router.put('/close', async (req, res) => {
+    const { deposit, scrap, note } = req.body;
+    const userId = req.session.st_id; // ตรวจสอบให้แน่ใจว่า session ถูกตั้งค่าถูกต้อง
 
+    if (!userId) {
+        return res.status(401).json({ message: "Unauthorized: No user session found" });
+    }
 
+    const query = `
+        UPDATE circulating_money 
+        SET deposit = ?, scrap = ?, note = ?, status = '0', user_id = ?
+        WHERE status = '1'
+        ORDER BY created_at DESC
+        LIMIT 1
+    `;
 
+    try {
+        const [result] = await connection.promise().query(query, [deposit, scrap, note, userId]);
+        if (result.affectedRows > 0) {
+            res.status(200).json({ message: "success" });
+        } else {
+            res.status(404).json({ message: "No open sales round found" });
+        }
+    } catch (error) {
+        console.error("Error closing sales round:", error);
+        res.status(500).json({ message: "error", error: error.message });
+    }
+});
 
+// ดึงข้อมูลรอบการขาย
+router.get('/current', async (req, res) => {
+    const query = `
+        SELECT cm.*, s.st_name
+        FROM circulating_money cm
+        LEFT JOIN staff s ON cm.user_id = s.st_id
+        ORDER BY cm.created_at DESC
+        LIMIT 1
+    `;
 
+    try {
+        const [rows] = await connection.promise().query(query);
+        if (rows.length > 0) {
+            res.status(200).json(rows[0]);
+        } else {
+            res.status(404).json({ message: "No open sales round found" });
+        }
+    } catch (error) {
+        console.error("Error fetching current sales round:", error);
+        res.status(500).json({ message: "error", error: error.message });
+    }
+});
 
-
-
+// all
 router.get('/order', (req, res, next) => {
     const od_id = Number(req.params.od_id);
 
@@ -509,20 +587,20 @@ router.get('/order', (req, res, next) => {
     });
 });
 
-router.get('/order/:od_id', (req, res, next) => {
-    const od_id = Number(req.params.od_id);
+// router.get('/order/:od_id', (req, res, next) => {
+//     const od_id = Number(req.params.od_id);
 
-    var query = `SELECT * FROM \`order\`  WHERE od_id= ?;`;
+//     var query = `SELECT * FROM \`order\`  WHERE od_id= ?;`;
 
-    connection.query(query, [od_id], (err, results) => {
-        if (!err) {
-            return res.status(200).json(results);
-        } else {
-            console.error("MySQL Error:", err);
-            return res.status(500).json({ message: "error", error: err });
-        }
-    });
-});
+//     connection.query(query, [od_id], (err, results) => {
+//         if (!err) {
+//             return res.status(200).json(results);
+//         } else {
+//             console.error("MySQL Error:", err);
+//             return res.status(500).json({ message: "error", error: err });
+//         }
+//     });
+// });
 
 router.get('/latest', (req, res, next) => {
     const query = `SELECT * FROM \`order\` ORDER BY od_id DESC LIMIT 1;`; // ดึงคำสั่งซื้อที่ล่าสุด
@@ -538,7 +616,68 @@ router.get('/latest', (req, res, next) => {
     });
 });
 
+router.get('/order/:orderId', async (req, res) => {
+    const orderId = req.params.orderId;
 
+    try {
+        // ดึงข้อมูลหลักของออเดอร์
+        const orderQuery = `
+            SELECT o.*, s.st_name as staff_name, ot.odt_name
+            FROM \`order\` o
+            LEFT JOIN staff s ON o.user_id = s.st_id
+            LEFT JOIN orderstype ot ON o.odt_id = ot.odt_id
+            WHERE o.od_id = ?
+        `;
+        const [orderDetails] = await queryPromise(orderQuery, [orderId]);
+        console.log("Order Details:", orderDetails);
+
+        if (!orderDetails) {
+            return res.status(404).json({ message: "ไม่พบข้อมูลออเดอร์" });
+        }
+
+        // ดึงข้อมูลรายการสินค้าในออเดอร์
+        const itemsQuery = `
+            SELECT od.odde_id, od.sm_id, od.odde_qty, od.odde_sum,
+                   sm.sm_name, sm.sm_price, od.od_id
+            FROM orderdetail od
+            JOIN salesmenu sm ON od.sm_id = sm.sm_id
+            WHERE od.od_id = ?
+        `;
+        const items = await queryPromise(itemsQuery, [orderId]);
+        console.log("Items:", items);
+
+        // สร้าง response object
+        const response = {
+            od_id: orderDetails.od_id,
+            od_date: orderDetails.od_date,
+            od_qtytotal: orderDetails.od_qtytotal,
+            od_sumdetail: orderDetails.od_sumdetail,
+            od_discounttotal: orderDetails.od_discounttotal,
+            od_net: orderDetails.od_net,
+            od_paytype: orderDetails.od_paytype,
+            od_pay: orderDetails.od_pay,
+            od_change: orderDetails.od_change,
+            od_status: orderDetails.od_status,
+            note: orderDetails.note,
+            sh_id: orderDetails.sh_id,
+            odt_id: orderDetails.odt_id,
+            dc_id: orderDetails.dc_id,
+            user_id: orderDetails.user_id,
+            created_at: orderDetails.created_at,
+            updated_at: orderDetails.updated_at,
+            staff_name: orderDetails.staff_name,
+            odt_name: orderDetails.odt_name,
+            items: items
+        };
+
+        console.log("Final Response:", JSON.stringify(response, null, 2));
+
+        res.status(200).json(response);
+    } catch (error) {
+        console.error("เกิดข้อผิดพลาดในการดึงข้อมูลออเดอร์:", error);
+        res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูลออเดอร์", error: error.message });
+    }
+});
 
 
 module.exports = router;

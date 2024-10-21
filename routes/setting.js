@@ -67,7 +67,8 @@ router.post('/circulating_money', isAdmin, async (req, res, next) => {
         const db = connection.promise();
         const checkQuery = `
             SELECT cm_id FROM circulating_money 
-            WHERE DATE(created_at) = CURDATE() AND user_id = ?;
+            WHERE DATE(created_at) = CURDATE() AND user_id = ? AND status = '1';
+
         `;
         const [existingEntries] = await db.query(checkQuery, [userId]);
 
@@ -77,8 +78,8 @@ router.post('/circulating_money', isAdmin, async (req, res, next) => {
 
         // Insert data into circulating_money
         const insertQuery = `
-            INSERT INTO circulating_money (\`change\`, user_id)
-            VALUES (?, ?);
+            INSERT INTO circulating_money (\`change\`, user_id,status)
+            VALUES (?, ?,"1");
         `;
         const [insertResult] = await db.query(insertQuery, [data.change, userId]);
 

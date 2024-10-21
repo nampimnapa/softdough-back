@@ -1277,7 +1277,7 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
                 // const detailValues = upind.map(item => [item.qty_stock, item.indlde_id]);
                 // const flattenedUpdateData = upind.flat();
 
-                const updatestatusQuery = " UPDATE productionOrder SET pdo_status = 4 WHERE pdo_id = ?";
+                const updatestatusQuery = " UPDATE productionorder SET pdo_status = 4 WHERE pdo_id = ?";
 
 
                 upind.forEach(item => {

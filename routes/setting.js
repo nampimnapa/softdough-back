@@ -1,7 +1,8 @@
 const express = require("express");
 const connection = require("../connection");
 const router = express.Router();
-const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder } = require('../middleware')
+const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder, isAdminUserOrder } = require('../middleware');
+const pool = require("../connection");
 
 router.post('/addaddreess', async (req, res, next) => {
     const data = req.body;
@@ -25,15 +26,15 @@ router.post('/addaddreess', async (req, res, next) => {
     try {
         const [result] = await db.query(query, values);
         console.log('Insert result:', result); // Log insert result
-        return res.status(201).json({ 
-            message: "Address added successfully", 
-            insertId: result.insertId 
+        return res.status(201).json({
+            message: "Address added successfully",
+            insertId: result.insertId
         });
     } catch (err) {
         console.error("Database Error:", err);
-        return res.status(500).json({ 
-            message: "An error occurred while adding the address", 
-            error: err.message 
+        return res.status(500).json({
+            message: "An error occurred while adding the address",
+            error: err.message
         });
     }
 });
@@ -83,16 +84,16 @@ router.post('/circulating_money', isAdmin, async (req, res, next) => {
         `;
         const [insertResult] = await db.query(insertQuery, [data.change, userId]);
 
-        return res.status(200).json({ 
-            message: "success", 
-            insertId: insertResult.insertId 
+        return res.status(200).json({
+            message: "success",
+            insertId: insertResult.insertId
         });
 
     } catch (err) {
         console.error("Database Error:", err);
-        return res.status(500).json({ 
-            message: "An error occurred while processing your request", 
-            error: err.message 
+        return res.status(500).json({
+            message: "An error occurred while processing your request",
+            error: err.message
         });
     }
 });
@@ -174,9 +175,9 @@ router.get('/price', async (req, res, next) => {
 
     } catch (err) {
         console.error("Database Query Error:", err);
-        return res.status(500).json({ 
-            message: "An error occurred while fetching price data", 
-            error: err.message 
+        return res.status(500).json({
+            message: "An error occurred while fetching price data",
+            error: err.message
         });
     }
 });
@@ -233,9 +234,9 @@ router.post('/addordertype', async (req, res, next) => {
     } catch (error) {
         if (connection) await connection.rollback();
         console.error("Database Error:", error);
-        res.status(500).json({ 
-            message: "An error occurred while adding order type and details", 
-            error: error.message 
+        res.status(500).json({
+            message: "An error occurred while adding order type and details",
+            error: error.message
         });
     } finally {
         if (connection) connection.release();
@@ -269,11 +270,11 @@ router.patch('/updateprices', (req, res) => {
             });
         });
     }))
-    .then(() => res.status(200).json({ message: 'อัปเดตราคาสำเร็จ' }))
-    .catch(err => {
-        console.error('ข้อผิดพลาด MySQL:', err);
-        res.status(500).json({ message: 'ข้อผิดพลาดในการอัปเดตราคา', error: err });
-    });
+        .then(() => res.status(200).json({ message: 'อัปเดตราคาสำเร็จ' }))
+        .catch(err => {
+            console.error('ข้อผิดพลาด MySQL:', err);
+            res.status(500).json({ message: 'ข้อผิดพลาดในการอัปเดตราคา', error: err });
+        });
 });
 
 //แก้ไขราคาเดลิบางฟิล
@@ -283,8 +284,8 @@ router.patch('/updatepricesdeli', (req, res) => {
     if (!Array.isArray(prices) || prices.length === 0) {
         return res.status(400).json({ message: 'ข้อมูลไม่ถูกต้อง' });
     }
-    console.log(prices,"prices")
-    
+    console.log(prices, "prices")
+
     const updateOrInsertQueries = prices.map(priceObj => {
         const checkExistQuery = 'SELECT COUNT(*) AS count FROM orderstypedetail WHERE sm_id = ? AND odt_id = ?';
         const checkValues = [priceObj.sm_id, priceObj.odt_id];
@@ -313,15 +314,15 @@ router.patch('/updatepricesdeli', (req, res) => {
                     });
                 }
             });
-        }); 
+        });
     });
 
     Promise.all(updateOrInsertQueries)
-    .then(() => res.status(200).json({ message: 'อัปเดตราคาสำเร็จ' }))
-    .catch(err => {
-        console.error('ข้อผิดพลาด MySQL:', err);
-        res.status(500).json({ message: 'ข้อผิดพลาดในการอัปเดตราคา', error: err });
-    });
+        .then(() => res.status(200).json({ message: 'อัปเดตราคาสำเร็จ' }))
+        .catch(err => {
+            console.error('ข้อผิดพลาด MySQL:', err);
+            res.status(500).json({ message: 'ข้อผิดพลาดในการอัปเดตราคา', error: err });
+        });
 });
 
 //เดลิ แก้ไขทุกตัว ยังไม่เทสแล้วก็ไม่รองรับ ตัวที่ยังไม่มีข้อมูล
@@ -331,7 +332,7 @@ router.patch('/updatepriceswithincrement', (req, res) => {
 
     if (typeof priceup !== 'number' || !Array.isArray(detail) || detail.length === 0) {
         return res.status(400).json({ message: 'Invalid data format' });
-    } 
+    }
 
     const updatePromises = detail.map(item => {
         return new Promise((resolve, reject) => {
@@ -378,7 +379,7 @@ router.patch('/updatepriceswithincrement', (req, res) => {
 
 //ทุกตัว หน้าร้าน
 router.patch('/updatepricesallup', (req, res) => {
-    const {detail,priceup} = req.body;
+    const { detail, priceup } = req.body;
 
     if (!Array.isArray(detail) || detail.length === 0) {
         return res.status(400).json({ message: 'ข้อมูลไม่ถูกต้อง' });
@@ -404,11 +405,11 @@ router.patch('/updatepricesallup', (req, res) => {
             });
         });
     }))
-    .then(() => res.status(200).json({ message: 'อัปเดตราคาสำเร็จ' }))
-    .catch(err => {
-        console.error('ข้อผิดพลาด MySQL:', err);
-        res.status(500).json({ message: 'ข้อผิดพลาดในการอัปเดตราคา', error: err });
-    });
+        .then(() => res.status(200).json({ message: 'อัปเดตราคาสำเร็จ' }))
+        .catch(err => {
+            console.error('ข้อผิดพลาด MySQL:', err);
+            res.status(500).json({ message: 'ข้อผิดพลาดในการอัปเดตราคา', error: err });
+        });
 });
 
 module.exports = router;

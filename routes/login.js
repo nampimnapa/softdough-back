@@ -3,9 +3,9 @@ const express = require('express');
 const connection = require("../connection");
 const router = express.Router();
 const path = require('path');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const { body, validationResult, Result } = require('express-validator');
-const { promise } = require('bcrypt/promises');
+// const { promise } = require('bcrypt/promises');
 const { ifNotLoggedIn, ifLoggedIn, isAdmin, isUserProduction, isUserOrder ,isAdminUserOrder} = require('../middleware')
 
 

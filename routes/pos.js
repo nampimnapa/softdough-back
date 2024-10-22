@@ -276,7 +276,7 @@ router.post('/order', async (req, res) => {
     const {
         od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype,
         od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id,
-        selectedItems, user_id
+        selectedItems, user_id,freeItems = []
     } = req.body;
 
     const orderValues = [

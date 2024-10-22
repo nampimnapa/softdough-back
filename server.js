@@ -163,12 +163,12 @@ const isProduction = process.env.NODE_ENV === 'production';
 // };
 
 const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' 
-    ? 'https://softdough.co' 
-    : 'http://localhost:3000',
-credentials: true,
-methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-allowedHeaders: ['Content-Type', 'Authorization']
+    origin: process.env.NODE_ENV === 'production'
+        ? 'https://softdough.co'
+        : 'http://localhost:3000',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 };
 app.use(cors(corsOptions));
 
@@ -228,8 +228,8 @@ app.use('/expenses', expensesRoute);
 app.use('/promotion', promotionRoute);
 app.use('/setting', settingRoute);
 app.use('/notification', notificationRouter.router);
-app.use('/pos',posRoute);
-app.use('/dash',dashRoute);
+app.use('/pos', posRoute);
+app.use('/dash', dashRoute);
 
 
 setInterval(() => {
@@ -247,7 +247,7 @@ app.get("/", (req, res) => {
 app.get('/session-check', (req, res) => {
     console.log('Checking session status');
     console.log('Session:', req.session);
-    
+
     if (req.session && req.session.isLoggedIn) {
         res.json({
             status: 'active',
@@ -268,4 +268,5 @@ app.get('/session-check', (req, res) => {
 
 
 server.listen(PORT, () => {
-    console.log(`Server started on port ${PORT}`);});
+    console.log(`Server started on port ${PORT}`);
+});

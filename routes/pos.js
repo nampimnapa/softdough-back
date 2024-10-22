@@ -271,8 +271,23 @@ router.get('/pdf-viewer', (req, res) => {
 
 // เทสหักสต้อก คือต้องทำใหม่
 router.post('/order', async (req, res) => {
+    if (req.session && req.session.isLoggedIn) {
+        res.json({
+            status: 'active',
+            session: {
+                isLoggedIn: req.session.isLoggedIn,
+                st_id: req.session.st_id,
+                st_type: req.session.st_type
+            }
+        });
+    } else {
+        res.json({
+            status: 'inactive',
+            session: null
+        });
+    }
     const userId = req.session.st_id;
-    console.log(req.session)
+    console.log(req.session.st_id)
     const {
         od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype,
         od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id,

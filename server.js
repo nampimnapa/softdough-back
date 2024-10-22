@@ -232,7 +232,29 @@ setInterval(() => {
 
 app.get("/", (req, res) => {
     // res.json({ message: "Hello!!, welcome This is the API hub for the SOFTDOUGH, CP-KKU project." });
+    console.log(req.session)
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/session-check', (req, res) => {
+    console.log('Checking session status');
+    console.log('Session:', req.session);
+    
+    if (req.session && req.session.isLoggedIn) {
+        res.json({
+            status: 'active',
+            session: {
+                isLoggedIn: req.session.isLoggedIn,
+                st_id: req.session.st_id,
+                st_type: req.session.st_type
+            }
+        });
+    } else {
+        res.json({
+            status: 'inactive',
+            session: null
+        });
+    }
 });
 
 

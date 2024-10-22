@@ -217,18 +217,24 @@ router.post('/addordertype', async (req, res, next) => {
         const orderTypeValues = [odt_id, odt_name, odt_per, null];
         await connection.query(insertOrderTypeQuery, orderTypeValues);
 
-        // เพิ่มข้อมูลใน ordersTypeDetail
-        const detailInsertQuery = `
-            INSERT INTO orderstypedetail (sm_id, odt_id, odtd_price, deleted_at)
-            VALUES (?, ?, ?, null);
-        `;
+        // ตรวจสอบว่า detail เป็น array และมีข้อมูล
+        if (Array.isArray(detail) && detail.length > 0) {
+            const detailInsertQuery = `
+                INSERT INTO orderstypedetail (sm_id, odt_id, odtd_price, deleted_at)
+                VALUES (?, ?, ?, null);
+            `;
 
-        for (const item of detail) {
-            const odtd_price = item.sm_price + priceup;
-            const detailValues = [item.sm_id, odt_id, odtd_price];
-            await connection.query(detailInsertQuery, detailValues);
+            // วน loop เพิ่มข้อมูลใน ordersTypeDetail
+            for (const item of detail) {
+                const odtd_price = item.sm_price + priceup;
+                const detailValues = [item.sm_id, odt_id, odtd_price];
+                await connection.query(detailInsertQuery, detailValues);
+            }
+        } else {
+            throw new Error("Invalid detail format");
         }
 
+        // ยืนยันการทำธุรกรรม
         await connection.commit();
         res.status(201).json({ message: "Order type and details added successfully" });
     } catch (error) {
@@ -242,6 +248,7 @@ router.post('/addordertype', async (req, res, next) => {
         if (connection) connection.release();
     }
 });
+
 
 
 //แก้ไขราคาหน้าร้านบางฟิล

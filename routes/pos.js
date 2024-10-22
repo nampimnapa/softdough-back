@@ -435,7 +435,7 @@ async function countCurrentStockWithNamesAndExpiry() {
                 pdo.pdo_status,
                 DATE(DATE_ADD(pod.created_at, INTERVAL r.qtylifetime DAY)) AS exp_date
             FROM productionorderdetail pod
-             JOIN productionorder pdo ON pod.pdo_id = pod.pdo_id
+            JOIN productionorder pdo ON pod.pdo_id = pod.pdo_id
             JOIN products p ON pod.pd_id = p.pd_id
             JOIN recipe r ON p.pd_id = r.pd_id
             WHERE pdo.pdo_status=4

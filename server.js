@@ -145,7 +145,7 @@ const frontUrl = process.env.FRONT;
 
 // CORS settings
 const corsOptions = {
-    origin: [frontUrl, 'http://localhost:3000'],
+    origin: [frontUrl, 'http://localhost:3000', 'https://softdough.osp101.dev'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // เพิ่ม OPTIONS
     allowedHeaders: ['Content-Type', 'Authorization'], // เพิ่ม Authorization

@@ -142,24 +142,38 @@ const favicon = require('serve-favicon');
 const app = express();
 const PORT = process.env.PORT || 8080;
 const frontUrl = process.env.FRONT;
+const isProduction = process.env.NODE_ENV === 'production';
 
 // CORS settings
 const corsOptions = {
-    origin: [frontUrl, 'http://localhost:3000', 'https://softdough.osp101.dev'],
+    origin: (origin, callback) => {
+        const allowedOrigins = isProduction 
+            ? ['https://softdough.co', 'https://api.softdough.co']
+            : ['http://localhost:3000', 'http://localhost:5555'];
+
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // เพิ่ม OPTIONS
-    allowedHeaders: ['Content-Type', 'Authorization'], // เพิ่ม Authorization
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 };
 app.use(cors(corsOptions));
 
 
 // Cookie session settings
+
+
 app.use(cookieSession({
     name: "session",
     keys: ["key1", "key2"],
-    maxAge: 3600 * 1000, // 1 hour
-    secure: true,        // เพิ่ม
-    sameSite: 'none'     // เพิ่ม
+    maxAge: 3600 * 1000,
+    secure: isProduction, // HTTPS เฉพาะ production
+    sameSite: isProduction ? 'none' : 'lax',
+    domain: isProduction ? '.softdough.co' : undefined
 }));
 
 app.use(express.json());

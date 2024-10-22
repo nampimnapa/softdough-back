@@ -272,6 +272,7 @@ router.get('/pdf-viewer', (req, res) => {
 // เทสหักสต้อก คือต้องทำใหม่
 router.post('/order', async (req, res) => {
     const userId = req.session.st_id;
+    console.log(req.session)
     const {
         od_date, od_qtytotal, od_sumdetail, od_discounttotal, od_paytype,
         od_net, od_pay, od_change, od_status, note, sh_id, odt_id, dc_id,

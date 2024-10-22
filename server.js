@@ -166,14 +166,14 @@ app.use(cors(corsOptions));
 
 // Cookie session settings
 
-
 app.use(cookieSession({
-    name: "session",
-    keys: ["key1", "key2"],
-    maxAge: 3600 * 1000,
-    secure: isProduction, // HTTPS เฉพาะ production
-    sameSite: isProduction ? 'none' : 'lax',
-    domain: isProduction ? '.softdough.co' : undefined
+    name: 'session',
+    keys: ['key1', 'key2'],
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    domain: process.env.NODE_ENV === 'production' ? '.softdough.co' : undefined,
+    httpOnly: true
 }));
 
 app.use(express.json());

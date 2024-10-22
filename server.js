@@ -147,8 +147,8 @@ const frontUrl = process.env.FRONT;
 const corsOptions = {
     origin: [frontUrl, 'http://localhost:3000'],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // เพิ่ม OPTIONS
+    allowedHeaders: ['Content-Type', 'Authorization'], // เพิ่ม Authorization
 };
 app.use(cors(corsOptions));
 
@@ -157,7 +157,9 @@ app.use(cors(corsOptions));
 app.use(cookieSession({
     name: "session",
     keys: ["key1", "key2"],
-    maxAge: 3600 * 1000 // 1 hour
+    maxAge: 3600 * 1000, // 1 hour
+    secure: true,        // เพิ่ม
+    sameSite: 'none'     // เพิ่ม
 }));
 
 app.use(express.json());

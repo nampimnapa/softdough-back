@@ -74,8 +74,8 @@ router.patch('/updatetype/:ept_id', (req, res, next) => {
 
 router.post('/add', isAdminUserOrder, (req, res, next) => {
     let expensesData = req.body;
-    const userId = req.session.st_id; // ดึง user_id จาก session
-    const userIdt = req.session.st_type; // ดึง user_id จาก session
+    const userId = expensesData.st_id; // ดึง user_id จาก session
+    const userIdt = expensesData.st_type; // ดึง user_id จาก session
 
     console.log('Session:', req.session); // Check session data
     console.log('Body:', req.body); // Check request body
@@ -89,11 +89,11 @@ router.post('/add', isAdminUserOrder, (req, res, next) => {
         VALUES (?, ?, ?, ?, ?, ?,?);
     `;
         const values = [
-            expensesData.ep_sum,
-            expensesData.ep_note,
-            expensesData.ep_status,
-            expensesData.ept_id,
-            expensesData.ep_date,
+            expensesData.valueForm.ep_sum,
+            expensesData.valueForm.ep_note,
+            expensesData.valueForm.ep_status,
+            expensesData.valueForm.ept_id,
+            expensesData.valueForm.ep_date,
             userId, // ใช้ user_id ที่ดึงจาก session
             null
         ];

@@ -161,14 +161,15 @@ const isProduction = process.env.NODE_ENV === 'production';
 //     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 //     allowedHeaders: ['Content-Type', 'Authorization']
 // };
-app.use(cors({
+
+const corsOptions = {
     origin: process.env.NODE_ENV === 'production' 
-        ? 'https://softdough.co' 
-        : 'http://localhost:3000',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+    ? 'https://softdough.co' 
+    : 'http://localhost:3000',
+credentials: true,
+methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+allowedHeaders: ['Content-Type', 'Authorization']
+};
 app.use(cors(corsOptions));
 
 

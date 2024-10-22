@@ -165,7 +165,6 @@ const Updateqtystock = async () => {
                 ingredient.ind_id,
                 SUM(ingredient_lot_detail.qty_stock) AS total_stock,
                 ingredient.ind_name,
-                ingredient.qty_per_unit as quantity,
                 (SUM(ingredient_lot_detail.qty_stock) DIV ingredient.qty_per_unit) AS ind_stock,
                 unit1.un_name AS un_purchased_name,
                 unit2.un_name AS un_ind_name,
@@ -189,7 +188,6 @@ const Updateqtystock = async () => {
                 ingredient_lot_detail.date_exp > NOW()
             GROUP BY 
                 ingredient_lot_detail.ind_id
-            ORDER BY ingredient_lot_detail.ind_id
         `;
 
         const [results] = await connection.promise().query(query);
@@ -947,8 +945,20 @@ router.get('/addUseIngrediantLotpro/:pdo_id', (req, res, next) => {
                 const Qx_prime = (Qx * N) / M;
                 const qty_used_sum = Math.floor(Qx_prime / qty_per_unit);
                 // const scrap = Qx_prime % qty_per_unit;
-                const scrap = Math.trunc(Qx_prime % qty_per_unit);
+                console.log(Qx_prime);
+                console.log(qty_per_unit, 'qty_per_unit');
 
+                // แทนที่ Math.trunc ด้วยเงื่อนไขในการตรวจสอบเศษทศนิยม
+                let scrap = Qx_prime % qty_per_unit;
+
+                if (scrap !== 0) {
+                    // ถ้า scrap เป็นทศนิยม และไม่ใช่ 0 ให้คงค่าที่ได้จากการ modulo
+                    scrap = scrap; // หรือค่าที่ต้องการเก็บ
+                } else {
+                    // ถ้า scrap เป็น 0 ให้ปรับค่าใหม่ตามที่ต้องการ
+                    scrap = qty_per_unit; // เช่น เปลี่ยนเป็น qty_per_unit หากไม่ต้องการให้เป็น 0
+                }
+                
                 finalResults.push({
                     pd_name: row.pd_name,
                     qtypd_name: row.qty,
@@ -973,6 +983,8 @@ router.get('/addUseIngrediantLotpro/:pdo_id', (req, res, next) => {
     });
 
 });
+
+
 
 //detailLotused ยัง
 router.get('/readdetailLotpro/:pdo_id', (req, res, next) => {
@@ -1277,7 +1289,7 @@ router.post('/addUseIngrediantLot', (req, res, next) => {
                 // const detailValues = upind.map(item => [item.qty_stock, item.indlde_id]);
                 // const flattenedUpdateData = upind.flat();
 
-                const updatestatusQuery = " UPDATE productionorder SET pdo_status = 4 WHERE pdo_id = ?";
+                const updatestatusQuery = " UPDATE productionOrder SET pdo_status = 4 WHERE pdo_id = ?";
 
 
                 upind.forEach(item => {

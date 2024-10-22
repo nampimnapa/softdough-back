@@ -145,22 +145,30 @@ const frontUrl = process.env.FRONT;
 const isProduction = process.env.NODE_ENV === 'production';
 
 // CORS settings
-const corsOptions = {
-    origin: (origin, callback) => {
-        const allowedOrigins = isProduction 
-            ? ['https://softdough.co', 'https://api.softdough.co']
-            : ['http://localhost:3000', 'http://localhost:5555'];
+// const corsOptions = {
+//     origin: (origin, callback) => {
+//         const allowedOrigins = isProduction 
+//             ? ['https://softdough.co', 'https://api.softdough.co']
+//             : ['http://localhost:3000', 'http://localhost:5555'];
 
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
+//         if (!origin || allowedOrigins.includes(origin)) {
+//             callback(null, true);
+//         } else {
+//             callback(new Error('Not allowed by CORS'));
+//         }
+//     },
+//     credentials: true,
+//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+//     allowedHeaders: ['Content-Type', 'Authorization']
+// };
+app.use(cors({
+    origin: process.env.NODE_ENV === 'production' 
+        ? 'https://softdough.co' 
+        : 'http://localhost:3000',
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
-};
+}));
 app.use(cors(corsOptions));
 
 
@@ -172,7 +180,6 @@ app.use(cookieSession({
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    domain: process.env.NODE_ENV === 'production' ? '.softdough.co' : undefined,
     httpOnly: true
 }));
 

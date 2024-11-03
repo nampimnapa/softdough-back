@@ -77,12 +77,17 @@ router.get('/read', (req, res, next) => {
     Updateqtystock()
     var query = `
     SELECT ingredient.*, 
-           unit1.un_name AS un_purchased_name,
-           unit2.un_name AS un_ind_name 
+       unit1.un_name AS un_purchased_name,
+       unit2.un_name AS un_ind_name,
+       SUM(ingredient_lot_detail.qty_stock)  AS sumind_stock,      
+       (SUM(ingredient_lot_detail.qty_stock) MOD ingredient.qty_per_unit) AS remainder_stock 
     FROM ingredient 
     LEFT JOIN unit AS unit1 ON ingredient.un_purchased = unit1.un_id
     LEFT JOIN unit AS unit2 ON ingredient.un_ind = unit2.un_id
-`;
+    LEFT JOIN ingredient_lot_detail ON ingredient.ind_id = ingredient_lot_detail.ind_id
+    GROUP BY ingredient.ind_id
+
+    `;
 
     //LEFT JOIN แทน JOIN เพื่อให้ข้อมูลจากตาราง ingredient แสดงออกมาทั้งหมด แม้ว่าข้อมูลใน unit อาจจะไม่ตรงกับเงื่อนไขใน JOIN
 
@@ -299,6 +304,7 @@ router.get('/readlotdetail', async (req, res, next) => {
             CONCAT('L', LPAD(il.indl_id, 7, '0')) AS indl_id_name,
             i.ind_name, il.qty_stock, i.qty_per_unit,
             ROUND(il.qty_stock / i.qty_per_unit) AS stock_quantity,
+            il.qty_stock%i.qty_per_unit as scrap,
             DATE_FORMAT(il.date_exp, '%Y-%m-%d') AS date_exp
         FROM 
             ingredient_lot_detail il

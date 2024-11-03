@@ -428,7 +428,7 @@ async function countCurrentStockWithNamesAndExpiry() {
             SELECT 
                 p.pd_id,
                 p.pd_name,
-                p.picture,  -- Added picture field
+                p.picture,
                 pod.pdod_id,
                 pod.pdod_stock,
                 DATE(pod.created_at) AS created_date,
@@ -436,13 +436,14 @@ async function countCurrentStockWithNamesAndExpiry() {
                 pdo.pdo_status,
                 DATE(DATE_ADD(pod.created_at, INTERVAL r.qtylifetime DAY)) AS exp_date
             FROM productionorderdetail pod
-            JOIN productionorder pdo ON pod.pdo_id = pod.pdo_id
+            JOIN productionorder pdo ON pod.pdo_id = pdo.pdo_id  -- แก้ตรงนี้
             JOIN products p ON pod.pd_id = p.pd_id
             JOIN recipe r ON p.pd_id = r.pd_id
             WHERE pdo.pdo_status=4
             AND pod.pdod_stock > 0 
             AND DATE(DATE_ADD(pod.created_at, INTERVAL r.qtylifetime DAY)) >= CURDATE()
             ORDER BY p.pd_id, pod.created_at;
+     
         `);
 
         const result = stockResult.reduce((acc, item) => {
